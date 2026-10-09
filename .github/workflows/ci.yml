@@ -96,7 +96,7 @@ jobs:
 
   release-gate:
     name: Determine release eligibility
-    if: github.event_name == 'push' || inputs.should_release
+    if: github.repository == 'tariknz/irdashies' && (github.event_name == 'push' || inputs.should_release)
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.gate.outputs.should_release }}
