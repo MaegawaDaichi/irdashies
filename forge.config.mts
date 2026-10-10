@@ -40,6 +40,8 @@ const config: ForgeConfig = {
   },
   packagerConfig: {
     asar: true,
+    executableName: 'irdashies-custom',
+    appBundleId: 'com.maegawadaichi.irdashies.custom',
     icon: path.resolve(import.meta.dirname, 'docs/assets/icons/logo'),
     extraResource: [
       path.resolve(import.meta.dirname, 'docs/assets/icons'),
@@ -51,6 +53,9 @@ const config: ForgeConfig = {
   },
   makers: [
     new MakerSquirrel({
+      name: 'irdashies_custom',
+      exe: 'irdashies-custom.exe',
+      setupExe: 'irDashies-Custom-Setup.exe',
       iconUrl: path.resolve(import.meta.dirname, 'docs/assets/icons/logo.ico'),
       setupIcon: path.resolve(
         import.meta.dirname,
@@ -66,7 +71,7 @@ const config: ForgeConfig = {
       name: '@electron-forge/publisher-github',
       config: {
         repository: {
-          owner: 'tariknz',
+          owner: 'MaegawaDaichi',
           name: 'irdashies',
         },
         prerelease: true,
