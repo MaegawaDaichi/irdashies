@@ -2,6 +2,11 @@ name: Build Custom Windows App
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - custom
+      - feat/custom-distribution
+      - fix/overlay-click-through-recovery
 
 permissions:
   contents: read
@@ -53,3 +58,9 @@ jobs:
           path: |
             out/make/squirrel.windows/x64/*
             irDashies-Custom-Windows.zip
+      - name: Upload installer only
+        uses: actions/upload-artifact@v7
+        with:
+          name: irDashies-Custom-Setup
+          if-no-files-found: error
+          path: out/make/squirrel.windows/x64/irDashies-Custom-Setup.exe
