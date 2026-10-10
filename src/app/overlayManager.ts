@@ -363,6 +363,7 @@ export class OverlayManager {
 
     this.displayWindows.set(display.id, browserWindow);
     browserWindow.on('show', () => {
+      browserWindow.setIgnoreMouseEvents(this.isLocked);
       refreshSessionDataForVisibleWindow(
         browserWindow,
         this.rendererDataSubscriptions,
@@ -371,8 +372,10 @@ export class OverlayManager {
     });
     browserWindow.on('closed', () => {
       logger.info(`Display ${display.id} overlay window closed`);
-      this.displayWindows.delete(display.id);
-      this.displayBoundsInfo.delete(display.id);
+      if (this.displayWindows.get(display.id) === browserWindow) {
+        this.displayWindows.delete(display.id);
+        this.displayBoundsInfo.delete(display.id);
+      }
     });
 
     browserWindow.webContents.on('render-process-gone', (_event, details) => {
@@ -382,9 +385,19 @@ export class OverlayManager {
 
       if (this.isQuitting) return;
 
+      // A dead renderer does not close its native transparent window. Release
+      // input immediately and destroy it before dropping the tracked reference.
+      // Otherwise an untracked full-display window can keep swallowing clicks.
+      if (!browserWindow.isDestroyed()) {
+        browserWindow.setIgnoreMouseEvents(true);
+        browserWindow.destroy();
+      }
+
       // Clean up stale entry so recreate doesn't early-return
-      this.displayWindows.delete(display.id);
-      this.displayBoundsInfo.delete(display.id);
+      if (this.displayWindows.get(display.id) === browserWindow) {
+        this.displayWindows.delete(display.id);
+        this.displayBoundsInfo.delete(display.id);
+      }
 
       // Small delay so Electron can fully clean up before a new window is created
       setTimeout(() => {
@@ -418,6 +431,8 @@ export class OverlayManager {
 
       const boundsInfo = this.displayBoundsInfo.get(display.id);
       browserWindow.webContents.send('containerBoundsInfo', boundsInfo);
+      browserWindow.setIgnoreMouseEvents(this.isLocked);
+      browserWindow.webContents.send('editModeToggled', !this.isLocked);
       this.onWindowReadyCallbacks.forEach((cb) => cb(`display-${display.id}`));
 
       // Apply shrink-wrap after initial setup when not in edit mode
@@ -432,6 +447,7 @@ export class OverlayManager {
       browserWindow.setPosition(expectedBounds.x, expectedBounds.y);
       browserWindow.setSize(expectedBounds.width, expectedBounds.height);
       browserWindow.showInactive();
+      browserWindow.setIgnoreMouseEvents(this.isLocked);
 
       const actualBounds = browserWindow.getBounds();
       const offset = {
@@ -487,6 +503,8 @@ export class OverlayManager {
         this.onWindowReadyCallbacks.forEach((cb) =>
           cb(`display-${display.id}`)
         );
+        browserWindow.setIgnoreMouseEvents(this.isLocked);
+        browserWindow.webContents.send('editModeToggled', !this.isLocked);
       }
     });
 
@@ -600,6 +618,7 @@ export class OverlayManager {
       }
 
       win.setBounds(targetBounds);
+      win.setIgnoreMouseEvents(this.isLocked);
 
       const actualBounds = win.getBounds();
       const boundsInfo = this.displayBoundsInfo.get(displayId);
