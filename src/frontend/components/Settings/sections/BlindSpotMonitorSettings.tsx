@@ -120,6 +120,18 @@ export const BlindSpotMonitorSettings = () => {
                       onChange={(v) => handleConfigChange({ width: v })}
                     />
                     <SettingSliderRow
+                      title="Indicator Length"
+                      description="Length of the coloured bar as a percentage of the widget height."
+                      value={settings.config.indicatorLength ?? 50}
+                      units="%"
+                      min={10}
+                      max={100}
+                      step={1}
+                      onChange={(v) =>
+                        handleConfigChange({ indicatorLength: v })
+                      }
+                    />
+                    <SettingSliderRow
                       title="Border Size"
                       description="Border thickness of the blind spot indicator in pixels."
                       value={settings.config.borderSize ?? 1}

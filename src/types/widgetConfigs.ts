@@ -503,6 +503,7 @@ export interface BlindSpotMonitorConfig {
   distAhead: number;
   distBehind: number;
   width?: number;
+  indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
   sessionVisibility: SessionVisibilitySettings;
