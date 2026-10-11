@@ -5,7 +5,10 @@ import {
   DEFAULT_LAP_TRACE_COLORS,
   DEFAULT_LAP_TRACE_SOUND,
 } from './lapTrace';
-import { DEFAULT_INCIDENT_CAMERA_GROUP } from './widgetConfigs';
+import {
+  DEFAULT_INCIDENT_CAMERA_GROUP,
+  DEFAULT_RADAR_TUNING,
+} from './widgetConfigs';
 
 export const defaultDashboard: {
   widgets: TypedDashboardWidget[];
@@ -61,6 +64,9 @@ export const defaultDashboard: {
         foreground: {
           opacity: 70,
         },
+        driverRow: {
+          opacity: 70,
+        },
         countryFlags: {
           enabled: true,
         },
@@ -71,9 +77,11 @@ export const defaultDashboard: {
           enabled: true,
           showStatusBadges: true,
           removeNumbersFromName: false,
+          subtext: 'teamName',
         },
         teamName: {
           enabled: false,
+          subtext: 'none',
         },
         pitStatus: {
           enabled: true,
@@ -105,6 +113,12 @@ export const defaultDashboard: {
         },
         lapCount: {
           enabled: false,
+        },
+        classHeaderStyle: {
+          estimatedLaps: {
+            enabled: false,
+            numLaps: 5,
+          },
         },
         driverStandings: {
           buffer: 3,
@@ -430,6 +444,34 @@ export const defaultDashboard: {
         oilTemp: { enabled: true, position: 'top', edgeOffset: 0 },
         waterTemp: { enabled: true, position: 'top', edgeOffset: 0 },
         tempLayout: { swapSides: false },
+        shiftPointSettings: {
+          enabled: false,
+          indicatorType: 'glow',
+          indicatorColor: '#00ff00',
+          carConfigs: {},
+        },
+        background: { opacity: 80 },
+        showOnlyWhenOnTrack: true,
+        sessionVisibility: {
+          race: true,
+          loneQualify: true,
+          openQualify: true,
+          practice: true,
+          offlineTesting: true,
+        },
+      },
+    },
+    {
+      id: 'shiftlight',
+      enabled: false,
+      layout: {
+        x: 422,
+        y: 664,
+        width: 200,
+        height: 50,
+      },
+      config: {
+        showRpmText: true,
         shiftPointSettings: {
           enabled: false,
           indicatorType: 'glow',
@@ -1078,6 +1120,93 @@ export const defaultDashboard: {
       },
     },
     {
+      id: 'radar',
+      enabled: false,
+      layout: {
+        x: 760,
+        y: 560,
+        width: 300,
+        height: 300,
+      },
+      config: {
+        range: 30,
+        autoHide: true,
+        showDistance: 20,
+        hideDistance: 25,
+        fadeSeconds: 0.3,
+        carLength: 4.5,
+        carWidth: 1.9,
+        sizeByClass: true,
+        classSizes: {},
+        showWarnings: true,
+        warningArcs: false,
+        warningArcStyle: 'arc',
+        cautionDistance: 7,
+        showGapLabel: true,
+        showCarNumbers: true,
+        showTrackMap: true,
+        trackWidth: 10,
+        mapOpacity: 10,
+        showRings: true,
+        ringSpacing: 10,
+        hideInPit: true,
+        hideInPitBox: true,
+        rivalColorMode: 'class',
+        rivalCustomColor: null,
+        playerColor: 16777215,
+        background: {
+          opacity: 30,
+        },
+        edgeFade: 30,
+        showCrosshair: true,
+        axisMotion: true,
+        axisDashLength: 3,
+        axisSpeed: 100,
+        closeColor: 0xf59e0b,
+        alongsideColor: 0xef4444,
+        pulseHz: 2.5,
+        arcMinDeg: 6,
+        arcMaxDeg: 18,
+        arcThickness: 7,
+        showOverlap: true,
+        overlapThreshold: 'door',
+        overlapShowPercent: false,
+        showDiveWarning: true,
+        diveMinClosingKmh: 15,
+        diveWarnSeconds: 1.2,
+        diveGhost: true,
+        diveShowClosing: false,
+        diveArcs: true,
+        diveArcStyle: 'segments',
+        diveArcMinDeg: 6,
+        diveArcMaxDeg: 18,
+        showHazards: true,
+        hazardRange: 500,
+        hazardBlinkDistance: 150,
+        hazardCrash: true,
+        hazardSlow: true,
+        hazardOff: true,
+        hazardShowLabel: true,
+        hazardShowSpeed: true,
+        hazardArcs: true,
+        hazardArcStyle: 'glow',
+        hazardArcMinDeg: 8,
+        hazardArcMaxDeg: 24,
+        autoProfile: true,
+        ovalProfile: null,
+        tuning: { ...DEFAULT_RADAR_TUNING },
+        showOnlyWhenOnTrack: true,
+        sessionVisibility: {
+          race: true,
+          loneQualify: false,
+          openQualify: true,
+          practice: true,
+          offlineTesting: false,
+          warmup: true,
+        },
+      },
+    },
+    {
       id: 'garagecover',
       enabled: false,
       layout: {
@@ -1542,6 +1671,7 @@ export const defaultDashboard: {
         brakeCueOutputDeviceId: DEFAULT_AUDIO_OUTPUT_DEVICE_ID,
         brakeCueVolume: 0.6,
         brakeCueLeadSec: 0,
+        brakeCueMinPeak: 0.12,
         sound: DEFAULT_LAP_TRACE_SOUND,
         brakeCueBars: false,
         brakeCueBarSide: 'right',
@@ -1583,6 +1713,14 @@ export const defaultDashboard: {
           yAxisMode: 'trace',
           lapWindow: 75,
           autoPin: true,
+        },
+        window: {
+          alwaysOnTop: false,
+        },
+        dock: {
+          enabled: false,
+          arrangement: 'row',
+          panels: [],
         },
       },
     },

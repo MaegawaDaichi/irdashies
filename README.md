@@ -9,6 +9,10 @@
 
 An open-source platform for building real-time iRacing overlays and utilities using React and Electron. Designed to be approachable for web developers — no iRacing SDK, C++, or even iRacing installation required to get started.
 
+This fork builds **irDashies Custom**, a separate app for personal modifications.
+See [custom builds and settings migration](docs/CUSTOM_BUILD.md) for Windows
+installers, copying existing layouts, and incorporating upstream updates.
+
 For bug reports, feature requests, or to get involved, join our [Discord](https://discord.gg/YMAqduF2Ft).
 
 ## Try it out
@@ -577,6 +581,7 @@ A race control window with live standings, an automatic incident feed, and a per
   - Dashboard import/export to share layouts between users or back up your setup
 - Streamer & OBS Ready
   - Built-in Web Server: All overlays can be used as a browser source in OBS. Use `http://localhost:3000/dashboard` for the default profile, or `http://localhost:3000/dashboard?profile=<profileId>` for specific profiles.
+  - Single Widget URLs: `http://localhost:3000/widget/<widgetId>` shows one widget filling the page, for hosts that take one page per source such as OpenKneeboard in VR. `http://localhost:3000` lists the URL for every widget in the profile.
   - Network Access: Enable network access in settings to allow other devices on your local network to access the dashboard (useful for dual-PC streaming setups).
   - Garage Cover: Automatically hide your screen with a custom image when you enter the garage to keep your car setup private.
   - Transparent backgrounds: All overlays are designed to look great on top of your game or stream.
@@ -645,6 +650,23 @@ npm start
 This will start the application.
 
 Look for the application in your app tray.
+
+### Le Mans Ultimate
+
+1. In LMU, enable **Settings → Gameplay → Enable Plugins**, then restart LMU.
+2. Start irDashies normally. It detects LMU or iRacing when either game starts.
+
+To force a simulator, use `irdashies.exe --sim=lmu` or
+`irdashies.exe --sim=iracing`. For development, set `IRDASHIES_SIM` instead:
+
+```powershell
+$env:IRDASHIES_SIM = 'lmu'
+npm start
+```
+
+Without an override, irDashies waits for the first game it detects and uses that
+game until irDashies restarts. If both games are running when detection occurs,
+LMU is selected.
 
 > You will need to have Node.js installed on your machine to run the application. You can download it from [here](https://nodejs.org/).
 

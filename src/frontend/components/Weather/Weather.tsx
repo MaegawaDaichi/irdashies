@@ -42,8 +42,7 @@ export const Weather = () => {
     unitSetting === 'auto' ? displayUnits === 1 : unitSetting === 'Metric';
   const actualUnit = isMetric ? 'Metric' : 'Imperial';
 
-  // Weather telemetry - throttled to ~1 update/sec since weather data
-  // changes slowly and doesn't need 60 FPS updates
+  // Weather telemetry comes from the session-bar channel at up to 5 Hz.
   const weather = useThrottledWeather();
 
   const { trackTemp, airTemp } = useTrackTemperature({

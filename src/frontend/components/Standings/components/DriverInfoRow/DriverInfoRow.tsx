@@ -38,7 +38,7 @@ interface DriverRowInfoProps {
   hasFastestTime: boolean;
   delta?: number;
   gap?: Gap;
-  interval?: number;
+  interval?: number | Gap;
   position?: number;
   lap?: number;
   license?: string;
@@ -62,6 +62,14 @@ interface DriverRowInfoProps {
   avgLapTime?: number;
   isMultiClass: boolean;
   displayOrder?: string[];
+  /**
+   * Columns the running simulator has no data for, resolved by the parent.
+   *
+   * Passed in rather than read from context here so this row stays driven by
+   * its props, and so the header -- which builds its own column list -- is
+   * guaranteed to be filtering from the very same set.
+   */
+  hiddenColumns?: ReadonlySet<string>;
   config?: RelativeWidgetSettings['config'] | StandingsWidgetSettings['config'];
   lastPitLap?: number;
   lastLap?: number;
@@ -216,6 +224,7 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
     avgLapTime,
     isMultiClass,
     displayOrder,
+    hiddenColumns,
     config,
     lastPitLap,
     lastLap,
@@ -274,6 +283,7 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
   }, [numLapDeltasToShow]);
 
   const columnDefinitions = useMemo(() => {
+    const standingsConfig = config && 'gap' in config ? config : undefined;
     const columns = [
       {
         id: 'position',
@@ -374,6 +384,11 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
               config?.driverName?.removeNumbersFromName ?? false
             }
             fullName={name}
+            teamName={
+              standingsConfig?.driverName?.subtext === 'teamName'
+                ? teamName
+                : undefined
+            }
             nameFormat={config?.driverName?.nameFormat}
             label={resolvedTag?.label}
             nameDisplay={tagSettings?.display?.nameDisplay}
@@ -392,6 +407,20 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
           <TeamNameCell
             key="teamName"
             teamName={teamName}
+            fillAvailableWidth={
+              !(config?.driverName?.enabled ?? true) ||
+              (displayOrder !== undefined &&
+                !displayOrder.includes('driverName'))
+            }
+            driverName={
+              standingsConfig?.teamName?.subtext === 'driverName'
+                ? name
+                : undefined
+            }
+            nameFormat={config?.driverName?.nameFormat}
+            removeNumbersFromName={
+              config?.driverName?.removeNumbersFromName ?? false
+            }
             compactMode={compactMode}
           />
         ),
@@ -642,24 +671,33 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
       },
     ];
 
+    // Applied once, ahead of the ordering logic, so a hidden column is gone
+    // from every path below -- including an explicit displayOrder that names
+    // it. The header row is filtered from the same set by the parent; if the
+    // two disagreed the header would stop lining up with the cells.
+    const renderable = hiddenColumns?.size
+      ? columns.filter((col) => !hiddenColumns.has(col.id))
+      : columns;
+
     if (displayOrder) {
       const orderedColumns = displayOrder
-        .map((orderId) => columns.find((col) => col.id === orderId))
+        .map((orderId) => renderable.find((col) => col.id === orderId))
         .filter(
           (col): col is NonNullable<typeof col> =>
             col !== undefined && col.shouldRender
         );
 
-      const remainingColumns = columns.filter(
+      const remainingColumns = renderable.filter(
         (col) => col.shouldRender && !displayOrder.includes(col.id)
       );
 
       return [...orderedColumns, ...remainingColumns];
     }
 
-    return columns.filter((col) => col.shouldRender);
+    return renderable.filter((col) => col.shouldRender);
   }, [
     displayOrder,
+    hiddenColumns,
     config,
     position,
     lap,
@@ -718,15 +756,23 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
     lapCountUnknown,
   ]);
 
+  const rowOpacity =
+    config && 'driverRow' in config ? (config.driverRow?.opacity ?? 70) : 70;
+
   return (
     <tr
       key={carIdx}
+      style={{
+        ['--row-opacity' as string]: `${rowOpacity}%`,
+        // Keep the player's existing 20% highlight at the default row opacity.
+        ['--player-row-opacity' as string]: `${(rowOpacity * 20) / 70}%`,
+      }}
       className={[
         !onTrack || onPitRoad ? 'text-white/60' : '',
         isPlayer ? 'text-amber-300' : '',
         isPlayer
-          ? 'bg-yellow-500/20'
-          : 'odd:bg-slate-800/70 even:bg-slate-900/70 text-sm',
+          ? 'bg-yellow-500/(--player-row-opacity)'
+          : 'odd:bg-slate-800/(--row-opacity) even:bg-slate-900/(--row-opacity) text-sm',
         !isPlayer && isLapped ? 'text-blue-400' : '',
         !isPlayer && isLappingAhead ? 'text-red-400' : '',
         hidden ? 'invisible' : '',
