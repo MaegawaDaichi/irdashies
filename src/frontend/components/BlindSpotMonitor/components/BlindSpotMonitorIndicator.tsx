@@ -34,7 +34,8 @@ export const BlindSpotMonitorIndicator = ({
     indicatorLength <= 100
       ? indicatorLength
       : 50;
-  const topPosition = `${(100 - length) / 2 - percent * 75}%`;
+  const movementRange = (100 + length) / 2;
+  const topPosition = `${(100 - length) / 2 - percent * movementRange}%`;
   const widthPx = `${width ?? 20}px`;
   const indicatorColorHex = `#${(indicatorColor ?? 16096779).toString(16).padStart(6, '0')}`;
   const twoCarsText = state === CarLeftRight.Cars2Left ? '2 left' : '2 right';
