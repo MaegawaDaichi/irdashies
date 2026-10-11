@@ -7,6 +7,7 @@ export interface BlindSpotMonitorIndicatorProps {
   percent: number;
   state: CarLeftRight;
   width?: number;
+  indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
   visible: boolean;
@@ -19,6 +20,7 @@ export const BlindSpotMonitorIndicator = ({
   percent,
   state,
   width,
+  indicatorLength = 50,
   borderSize,
   indicatorColor,
   visible,
@@ -26,7 +28,13 @@ export const BlindSpotMonitorIndicator = ({
 }: BlindSpotMonitorIndicatorProps) => {
   const isTwoCars =
     state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right;
-  const topPosition = `${25 - percent * 75}%`;
+  const length =
+    Number.isFinite(indicatorLength) &&
+    indicatorLength >= 10 &&
+    indicatorLength <= 100
+      ? indicatorLength
+      : 50;
+  const topPosition = `${(100 - length) / 2 - percent * 75}%`;
   const widthPx = `${width ?? 20}px`;
   const indicatorColorHex = `#${(indicatorColor ?? 16096779).toString(16).padStart(6, '0')}`;
   const twoCarsText = state === CarLeftRight.Cars2Left ? '2 left' : '2 right';
@@ -77,9 +85,10 @@ export const BlindSpotMonitorIndicator = ({
         }}
       >
         <div
-          className={`absolute rounded-full h-[50%] left-1/2 -translate-x-1/2 flex items-center justify-center`}
+          className={`absolute rounded-full left-1/2 -translate-x-1/2 flex items-center justify-center`}
           style={{
             top: topPosition,
+            height: `${length}%`,
             width: widthPx,
             backgroundColor: indicatorColorHex,
             transition: enableTransition ? 'top 0.04s linear' : 'none',
