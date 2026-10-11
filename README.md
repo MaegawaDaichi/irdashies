@@ -9,6 +9,10 @@
 
 An open-source platform for building real-time iRacing overlays and utilities using React and Electron. Designed to be approachable for web developers — no iRacing SDK, C++, or even iRacing installation required to get started.
 
+This fork builds **irDashies Custom**, a separate app for personal modifications.
+See [custom builds and settings migration](docs/CUSTOM_BUILD.md) for Windows
+installers, copying existing layouts, and incorporating upstream updates.
+
 For bug reports, feature requests, or to get involved, join our [Discord](https://discord.gg/YMAqduF2Ft).
 
 ## Try it out

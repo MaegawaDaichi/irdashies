@@ -83,7 +83,7 @@ export const WindDirection = memo(
           <div className="flex items-center gap-x-1.5">
             <WindArrow
               normalizedAngle={normalizedAngle}
-              className="flex-none size-5 stroke-current box-border fill-none origin-center transform-gpu transition-transform duration-1000 ease-out"
+              className="flex-none size-5 stroke-current box-border fill-none origin-center transform-gpu transition-[rotate] duration-200 ease-out"
               strokeWidth="stroke-[5]"
             />
             <div className="text-sm font-medium truncate tabular-nums text-right min-w-[3ch]">
@@ -103,7 +103,7 @@ export const WindDirection = memo(
             <span className="truncate min-w-0 text-white/60">Wind</span>
             <WindArrow
               normalizedAngle={normalizedAngle}
-              className="flex-none size-5 stroke-current box-border fill-none origin-center transform-gpu transition-transform duration-1000 ease-out"
+              className="flex-none size-5 stroke-current box-border fill-none origin-center transform-gpu transition-[rotate] duration-200 ease-out"
               strokeWidth="stroke-[5]"
             />
             <div className="flex-none whitespace-nowrap text-right font-medium tabular-nums min-w-[3ch]">
@@ -129,7 +129,7 @@ export const WindDirection = memo(
           >
             <WindArrow
               normalizedAngle={normalizedAngle}
-              className="absolute stroke-current w-full h-full box-border fill-none origin-center transform-gpu transition-transform duration-1000 ease-out"
+              className="absolute stroke-current w-full h-full box-border fill-none origin-center transform-gpu transition-[rotate] duration-200 ease-out"
               strokeWidth="stroke-[3]"
             />
 

@@ -64,6 +64,9 @@ export const defaultDashboard: {
         foreground: {
           opacity: 70,
         },
+        driverRow: {
+          opacity: 70,
+        },
         countryFlags: {
           enabled: true,
         },
@@ -1099,6 +1102,7 @@ export const defaultDashboard: {
         width: 20,
         borderSize: 1,
         indicatorColor: 16096779,
+        indicatorLength: 50,
         displayMode: 'standard',
         simpleSize: 44,
         simpleVerticalPosition: 50,

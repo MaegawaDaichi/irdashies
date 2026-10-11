@@ -1,11 +1,11 @@
 {
-  "name": "irdashies",
-  "productName": "irdashies",
-  "version": "1.1.0",
+  "name": "irdashies-custom",
+  "productName": "irDashies Custom",
+  "version": "1.1.0-custom.1",
   "description": "iRacing Dashboards & Overlays",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tariknz/irdashies"
+    "url": "https://github.com/MaegawaDaichi/irdashies"
   },
   "main": ".vite/build/main.cjs",
   "scripts": {
