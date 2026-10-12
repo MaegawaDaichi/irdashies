@@ -44,6 +44,7 @@ class FakeBrowserWindow {
     this.shown = true;
   });
   focus = vi.fn();
+  destroy = vi.fn();
   close = vi.fn();
   setAlwaysOnTop = vi.fn();
   setBounds = vi.fn();
@@ -259,6 +260,64 @@ describe('OverlayManager display windows', () => {
     expect(displayWindow.showInactive).toHaveBeenCalledOnce();
     expect(displayWindow.show).not.toHaveBeenCalled();
     expect(displayWindow.focus).not.toHaveBeenCalled();
+    expect(displayWindow.setIgnoreMouseEvents).toHaveBeenLastCalledWith(true);
+  });
+
+  it('releases and destroys a crashed native overlay before recreating it', () => {
+    vi.useFakeTimers();
+    try {
+      const manager = new OverlayManager();
+      manager.createOverlays({ widgets: [] } as DashboardLayout, {
+        createSettingsWindow: false,
+      });
+      manager.toggleLockOverlays();
+      const oldWindow = createdWindows[0];
+      const gone = oldWindow.webContents.on.mock.calls.find(
+        ([event]) => event === 'render-process-gone'
+      )?.[1] as (
+        event: unknown,
+        details: { reason: string; exitCode: number }
+      ) => void;
+      gone({}, { reason: 'crashed', exitCode: 1 });
+      expect(oldWindow.setIgnoreMouseEvents).toHaveBeenLastCalledWith(true);
+      expect(oldWindow.destroy).toHaveBeenCalledOnce();
+      vi.advanceTimersByTime(1000);
+      expect(createdWindows).toHaveLength(2);
+
+      // A late close event from the old native window must not untrack its
+      // replacement, or the next lock toggle would leave that window interactive.
+      const closed = oldWindow.on.mock.calls.find(
+        ([event]) => event === 'closed'
+      )?.[1] as () => void;
+      closed();
+      manager.toggleLockOverlays();
+      expect(createdWindows[1].setIgnoreMouseEvents).toHaveBeenLastCalledWith(
+        true
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('restores edit indicators after a renderer reload while editing', () => {
+    const manager = new OverlayManager();
+    manager.createOverlays({ widgets: [] } as DashboardLayout, {
+      createSettingsWindow: false,
+    });
+    manager.toggleLockOverlays();
+    const win = createdWindows[0];
+    const ready = win.once.mock.calls.find(
+      ([event]) => event === 'ready-to-show'
+    )?.[1] as () => void;
+    const loaded = win.webContents.on.mock.calls.find(
+      ([event]) => event === 'did-finish-load'
+    )?.[1] as () => void;
+    ready();
+    loaded();
+    win.webContents.send.mockClear();
+    loaded();
+    expect(win.webContents.send).toHaveBeenCalledWith('editModeToggled', true);
+    expect(win.setIgnoreMouseEvents).toHaveBeenLastCalledWith(false);
   });
 
   it('keeps the rebuilt overlay when the old one reports closed late', () => {

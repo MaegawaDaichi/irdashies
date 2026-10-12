@@ -80,6 +80,9 @@ export default {
     width: {
       control: { type: 'range', min: 5, max: 100, step: 1 },
     },
+    indicatorLength: {
+      control: { type: 'range', min: 10, max: 100, step: 1 },
+    },
     borderSize: {
       control: { type: 'range', min: 0, max: 10, step: 1 },
     },
@@ -131,6 +134,18 @@ export const CarOnRight: Story = {
     rightState: CarLeftRight.CarRight,
     leftPercent: 0,
     rightPercent: 0.5,
+    bgOpacity: 30,
+  },
+};
+
+export const FullLength: Story = {
+  args: {
+    show: true,
+    leftState: CarLeftRight.CarLeft,
+    rightState: CarLeftRight.CarRight,
+    leftPercent: 0,
+    rightPercent: 0,
+    indicatorLength: 100,
     bgOpacity: 30,
   },
 };
@@ -214,7 +229,7 @@ export const TwoCarsOnRight: Story = {
 
 type AnimationProps = Pick<
   BlindSpotMonitorDisplayProps,
-  'width' | 'borderSize' | 'bgOpacity' | 'indicatorColor'
+  'width' | 'indicatorLength' | 'borderSize' | 'bgOpacity' | 'indicatorColor'
 >;
 
 const CarPassingAnimation = (props: AnimationProps) => {
@@ -397,6 +412,7 @@ const toAnimationProps = (
   args: BlindSpotMonitorStoryProps
 ): AnimationProps => ({
   width: args.width,
+  indicatorLength: args.indicatorLength,
   borderSize: args.borderSize,
   bgOpacity: args.bgOpacity,
   indicatorColor: args.indicatorColor

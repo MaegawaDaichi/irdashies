@@ -194,9 +194,13 @@ export const useDriverStandings = (
           )
         : iratingAugmentedGroupedByClass;
 
-    // Calculate interval to player when enabled
+    // Calculate interval to the preceding car in class when enabled
     const intervalAugmentedGroupedByClass = intervalEnabled
-      ? augmentStandingsWithInterval(gapAugmentedGroupedByClass)
+      ? augmentStandingsWithInterval(
+          gapAugmentedGroupedByClass,
+          carIdxLap,
+          carIdxLapDistPct
+        )
       : gapAugmentedGroupedByClass;
 
     if (options?.showAll) return intervalAugmentedGroupedByClass;

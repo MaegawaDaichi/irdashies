@@ -14,6 +14,7 @@ export interface BlindSpotMonitorDisplayProps {
   disableTransition?: boolean;
   bgOpacity?: number;
   width?: number;
+  indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
   displayMode?: 'standard' | 'simple';
@@ -41,6 +42,7 @@ export const BlindSpotMonitorDisplay = ({
   disableTransition = false,
   bgOpacity,
   width,
+  indicatorLength,
   borderSize,
   indicatorColor,
   displayMode = 'standard',
@@ -99,6 +101,7 @@ export const BlindSpotMonitorDisplay = ({
         percent={leftPercent}
         state={leftState}
         width={width}
+        indicatorLength={indicatorLength}
         borderSize={borderSize}
         indicatorColor={indicatorColor}
         visible={showLeft}
@@ -110,6 +113,7 @@ export const BlindSpotMonitorDisplay = ({
         percent={rightPercent}
         state={rightState}
         width={width}
+        indicatorLength={indicatorLength}
         borderSize={borderSize}
         indicatorColor={indicatorColor}
         visible={showRight}
@@ -150,6 +154,7 @@ export const BlindSpotMonitor = () => {
       disableTransition={activeState.disableTransition}
       bgOpacity={settings?.background?.opacity}
       width={settings?.width}
+      indicatorLength={settings?.indicatorLength}
       borderSize={settings?.borderSize}
       indicatorColor={settings?.indicatorColor}
       displayMode={settings?.displayMode}
