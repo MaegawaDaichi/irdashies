@@ -75,8 +75,10 @@ export const useDriverStandings = (
     enabled: useLivePositionStandings,
   });
   const fastestLaps = useSessionFastestLaps(sessionNum);
-  const carIdxLastLapTime = standingsSnapshot?.carIdxLastLapTime ?? EMPTY_NUMBERS;
-  const carIdxBestLapTime = standingsSnapshot?.carIdxBestLapTime ?? EMPTY_NUMBERS;
+  const carIdxLastLapTime =
+    standingsSnapshot?.carIdxLastLapTime ?? EMPTY_NUMBERS;
+  const carIdxBestLapTime =
+    standingsSnapshot?.carIdxBestLapTime ?? EMPTY_NUMBERS;
   const carIdxF2Time = standingsSnapshot?.carIdxF2Time ?? EMPTY_NUMBERS;
   const carIdxEstTime = standingsSnapshot?.carIdxEstTime ?? EMPTY_NUMBERS;
   const carIdxOnPitRoad = standingsSnapshot?.carIdxOnPitRoad ?? EMPTY_BOOLEANS;
@@ -94,6 +96,7 @@ export const useDriverStandings = (
   const isOfficial = useSessionIsOfficial();
   const eventType = useWeekendInfoEventType();
   const lastPitLap = standingsSnapshot?.lastPitLap ?? EMPTY_NUMBERS;
+  const pitEntryLap = standingsSnapshot?.pitEntryLap ?? EMPTY_NUMBERS;
   const lastLap = carIdxLap;
   const prevCarTrackSurface =
     standingsSnapshot?.previousCarTrackSurface ?? EMPTY_NUMBERS;
@@ -135,7 +138,8 @@ export const useDriverStandings = (
       lastLap,
       prevCarTrackSurface,
       lapTimeDeltasEnabled ? numLapDeltas : undefined,
-      lapDeltasForCalc
+      lapDeltasForCalc,
+      pitEntryLap
     );
 
     if (useLivePositionStandings) {
@@ -218,6 +222,7 @@ export const useDriverStandings = (
     fastestLaps,
     sessionType,
     lastPitLap,
+    pitEntryLap,
     lastLap,
     prevCarTrackSurface,
     lapTimeDeltasEnabled,

@@ -55,6 +55,7 @@ export const useDriverPositions = () => {
   const prevCarTrackSurface =
     snapshot?.previousCarTrackSurface ?? EMPTY_OPTIONAL_NUMBERS;
   const lastPitLap = snapshot?.lastPitLap ?? EMPTY_OPTIONAL_NUMBERS;
+  const pitEntryLap = snapshot?.pitEntryLap ?? EMPTY_OPTIONAL_NUMBERS;
   const lastLap = useCarLap();
   const carIdxLapDstPct = snapshot?.carIdxLapDistPct ?? EMPTY_NUMBERS;
 
@@ -71,6 +72,7 @@ export const useDriverPositions = () => {
         lapNum: carIdxLapNum[carIdx],
         lapDstPct: carIdxLapDstPct[carIdx] ?? 0,
         lastPitLap: lastPitLap[carIdx] ?? undefined,
+        pitEntryLap: pitEntryLap[carIdx] ?? undefined,
         prevCarTrackSurface: prevCarTrackSurface[carIdx] ?? undefined,
         carTrackSurface: carIdxTrackSurface[carIdx],
       })) ?? []
@@ -85,6 +87,7 @@ export const useDriverPositions = () => {
     carIdxLapNum,
     carIdxLapDstPct,
     lastPitLap,
+    pitEntryLap,
     prevCarTrackSurface,
     carIdxTrackSurface,
   ]);
@@ -185,7 +188,7 @@ export const useDriverStandings = () => {
       qualifyingResults && Array.isArray(qualifyingResults)
         ? new Map(qualifyingResults.map((q) => [q.CarIdx, q]))
         : new Map();
-    
+
     const playerLap =
       playerCarIdx !== undefined
         ? (driverPositionsByCarIdx.get(playerCarIdx)?.lapNum ?? 0)
@@ -223,16 +226,16 @@ export const useDriverStandings = () => {
         if (livePosition !== undefined) classPosition = livePosition;
       }
 
- if (!classPosition || !isFinite(classPosition) || classPosition <= 0) {
+      if (!classPosition || !isFinite(classPosition) || classPosition <= 0) {
         // Class position can become 0 or negative in some edge cases
         // Only fall back to qualifying before race start
         // During the race class position should be available
         // After the race we can fallback to session position
         if (
-           sessionState === SessionState.GetInCar ||
-           sessionState === SessionState.Warmup ||
-           sessionState === SessionState.ParadeLaps
-         ) {
+          sessionState === SessionState.GetInCar ||
+          sessionState === SessionState.Warmup ||
+          sessionState === SessionState.ParadeLaps
+        ) {
           const qualifyingPosition = qualifyingPositionsByCarIdx.get(
             driver.carIdx
           );
@@ -281,6 +284,7 @@ export const useDriverStandings = () => {
         radioActive: radioActiveCarIdxs.includes(driverPos.carIdx),
         carId: driver.carId,
         lastPitLap: driverPos.lastPitLap,
+        pitEntryLap: driverPos.pitEntryLap,
         lastLap: driverPos.lastLap,
         prevCarTrackSurface: driverPos.prevCarTrackSurface,
         carTrackSurface: driverPos.carTrackSurface,

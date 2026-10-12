@@ -56,6 +56,7 @@ export interface Standings {
   carId?: number;
   lapTimeDeltas?: number[]; // Array of deltas vs player's recent laps, most recent last
   lastPitLap?: number;
+  pitEntryLap?: number;
   lastLap?: number;
   prevCarTrackSurface?: number;
   carTrackSurface?: number;
@@ -142,7 +143,8 @@ export const createDriverStandings = (
   lastLap: number[],
   prevCarTrackSurface: (number | undefined)[],
   numLapsToShow?: number,
-  lapDeltasVsPlayer?: number[][] // NEW: Pre-calculated deltas from LapTimesStore
+  lapDeltasVsPlayer?: number[][], // NEW: Pre-calculated deltas from LapTimesStore
+  pitEntryLap: (number | undefined)[] = []
 ): Standings[] => {
   const resultsPositions = Array.isArray(currentSession.resultsPositions)
     ? currentSession.resultsPositions
@@ -209,15 +211,13 @@ export const createDriverStandings = (
       const isClassFastest = result.CarIdx === classFastestCarIdx;
 
       // Ensure we always produce numeric fastest/last times (fallback to -1)
-      const bestLapTime = (telemetry?.carIdxBestLapTime?.[result.CarIdx] ?? 0);
-      const computedBestTime = bestLapTime > 1
-          ? bestLapTime
-          : result.FastestTime ?? -1;
+      const bestLapTime = telemetry?.carIdxBestLapTime?.[result.CarIdx] ?? 0;
+      const computedBestTime =
+        bestLapTime > 1 ? bestLapTime : (result.FastestTime ?? -1);
 
-      const lastLapTime = (telemetry?.carIdxLastLapTime?.[result.CarIdx] ?? 0);
-      const computedLastTime = lastLapTime > 1
-          ? lastLapTime
-          : result.LastTime ?? -1;
+      const lastLapTime = telemetry?.carIdxLastLapTime?.[result.CarIdx] ?? 0;
+      const computedLastTime =
+        lastLapTime > 1 ? lastLapTime : (result.LastTime ?? -1);
 
       return {
         carIdx: result.CarIdx,
@@ -267,13 +267,14 @@ export const createDriverStandings = (
           result.CarIdx === session.playerIdx
             ? undefined // Don't show deltas for player (comparing to themselves)
             : lapDeltasVsPlayer &&
-              lapDeltasVsPlayer[result.CarIdx] &&
-              lapDeltasVsPlayer[result.CarIdx].length > 0
-            ? lapDeltasVsPlayer[result.CarIdx].slice(
-                -(numLapsToShow ?? lapDeltasVsPlayer[result.CarIdx].length)
+                lapDeltasVsPlayer[result.CarIdx] &&
+                lapDeltasVsPlayer[result.CarIdx].length > 0
+              ? lapDeltasVsPlayer[result.CarIdx].slice(
+                  -(numLapsToShow ?? lapDeltasVsPlayer[result.CarIdx].length)
                 ) // Use most recent laps
-            : undefined,
+              : undefined,
         lastPitLap: lastPitLap[result.CarIdx] ?? undefined,
+        pitEntryLap: pitEntryLap[result.CarIdx] ?? undefined,
         lastLap: lastLap[result.CarIdx] ?? undefined,
         prevCarTrackSurface: prevCarTrackSurface[result.CarIdx] ?? undefined,
         carTrackSurface:
@@ -362,6 +363,7 @@ export const createDriverStandings = (
         carId: driver.CarID,
         lapTimeDeltas: undefined,
         lastPitLap: lastPitLap[driver.CarIdx] ?? undefined,
+        pitEntryLap: pitEntryLap[driver.CarIdx] ?? undefined,
         lastLap: lastLap[driver.CarIdx] ?? undefined,
         prevCarTrackSurface: prevCarTrackSurface[driver.CarIdx] ?? undefined,
         carTrackSurface:
@@ -406,7 +408,8 @@ export const groupStandingsByClass = (
   }
 
   sorted.sort(
-    ([, a], [, b]) => b[0].carClass.relativeSpeed - a[0].carClass.relativeSpeed);
+    ([, a], [, b]) => b[0].carClass.relativeSpeed - a[0].carClass.relativeSpeed
+  );
 
   return sorted;
 };
@@ -430,7 +433,7 @@ export const groupStandingsBySpeed = (
     const validDrivers = drivers
       .filter(
         (d) =>
-          d.position !== undefined &&  //Check for valid position
+          d.position !== undefined && //Check for valid position
           //Check for valid time to filter qualifying positions with no set time
           ((d.fastestTime !== undefined && d.fastestTime > 0) ||
             (d.lastTime !== undefined && d.lastTime > 0))
@@ -621,8 +624,12 @@ export const augmentStandingsWithGap = (
         }
 
         const classLeaderTrackPctForLaps = carIdxLapDistPct[classLeader.carIdx];
-        const driverLapNumber = !carIdxLap[driverStanding.carIdx] ? 1 : carIdxLap[driverStanding.carIdx];
-        const classLeaderLapNumber = !carIdxLap[classLeader.carIdx] ? 1 : carIdxLap[classLeader.carIdx];
+        const driverLapNumber = !carIdxLap[driverStanding.carIdx]
+          ? 1
+          : carIdxLap[driverStanding.carIdx];
+        const classLeaderLapNumber = !carIdxLap[classLeader.carIdx]
+          ? 1
+          : carIdxLap[classLeader.carIdx];
 
         const gap = {
           value: gapValue ? Math.abs(gapValue) : undefined,

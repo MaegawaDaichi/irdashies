@@ -28,6 +28,7 @@ const copySnapshot = (snapshot: StandingsSnapshot): StandingsSnapshot => ({
   carIdxP2PStatus: [...snapshot.carIdxP2PStatus],
   carIdxP2PCount: [...snapshot.carIdxP2PCount],
   lastPitLap: [...snapshot.lastPitLap],
+  pitEntryLap: [...snapshot.pitEntryLap],
   previousCarTrackSurface: [...snapshot.previousCarTrackSurface],
   liveClassPosition: [...snapshot.liveClassPosition],
 });

@@ -41,8 +41,10 @@ interface DriverStatusBadgesProps {
   out?: boolean;
   lap?: number;
   pit?: boolean;
+  pitInStall?: boolean;
   lastPit?: boolean;
   lastPitLap?: number;
+  pitEntryLap?: number;
   pitStopDuration?: number | null;
   showPitTime?: boolean;
   className?: string;
@@ -60,9 +62,11 @@ export const DriverStatusBadges = memo(
     tow,
     out,
     pit,
+    pitInStall = false,
     lap,
     lastPit,
     lastPitLap,
+    pitEntryLap,
     pitStopDuration,
     showPitTime = false,
     className = '',
@@ -87,7 +91,7 @@ export const DriverStatusBadges = memo(
         )}
       </>
     );
-    let pitLap = lastPitLap;
+    let pitLap = pitLapDisplayMode === 'pitEntryLap' ? pitEntryLap : lastPitLap;
 
     if (pitLapDisplayMode == 'lapsSinceLastPit') {
       if (lap && lastPitLap) {
@@ -157,13 +161,19 @@ export const DriverStatusBadges = memo(
         )}
         {pit && (
           <StatusBadge
-            borderColorClass={isMinimal ? muted : 'border-yellow-500'}
-            animate
+            borderColorClass={
+              isMinimal
+                ? muted
+                : pitInStall
+                  ? 'border-red-500'
+                  : 'border-yellow-500'
+            }
+            animate={!pitInStall}
           >
             PIT
           </StatusBadge>
         )}
-        {lastPit && !out && (
+        {lastPit && !out && pitLap != null && (
           <StatusBadge
             borderColorClass={isMinimal ? muted : 'border-yellow-500'}
           >

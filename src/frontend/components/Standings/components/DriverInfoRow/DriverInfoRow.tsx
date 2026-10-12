@@ -72,6 +72,7 @@ interface DriverRowInfoProps {
   hiddenColumns?: ReadonlySet<string>;
   config?: RelativeWidgetSettings['config'] | StandingsWidgetSettings['config'];
   lastPitLap?: number;
+  pitEntryLap?: number;
   lastLap?: number;
   prevCarTrackSurface?: number;
   carTrackSurface?: number;
@@ -227,6 +228,7 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
     hiddenColumns,
     config,
     lastPitLap,
+    pitEntryLap,
     lastLap,
     prevCarTrackSurface,
     carTrackSurface,
@@ -438,6 +440,7 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
             prevCarTrackSurface={prevCarTrackSurface}
             lap={lap}
             lastPitLap={lastPitLap}
+            pitEntryLap={pitEntryLap}
             lastLap={lastLap}
             currentSessionType={currentSessionType}
             dnf={dnf}
@@ -714,6 +717,7 @@ export const DriverInfoRow = memo((props: DriverRowInfoProps) => {
     carTrackSurface,
     prevCarTrackSurface,
     lastPitLap,
+    pitEntryLap,
     lastLap,
     currentSessionType,
     dnf,

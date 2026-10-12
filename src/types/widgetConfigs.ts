@@ -49,7 +49,7 @@ export interface DriverNameConfig {
 export interface PitStatusConfig {
   enabled: boolean;
   showPitTime?: boolean;
-  pitLapDisplayMode: 'lastPitLap' | 'lapsSinceLastPit';
+  pitLapDisplayMode: 'lastPitLap' | 'pitEntryLap' | 'lapsSinceLastPit';
 }
 
 export interface SessionBarConfig {

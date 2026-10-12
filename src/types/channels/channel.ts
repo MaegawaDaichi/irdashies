@@ -430,6 +430,8 @@ export interface StandingsSnapshot {
   sessionTime: number;
   sessionState: number;
   lastPitLap: (number | undefined)[];
+  /** Lap recorded at pit entry, indexed by CarIdx. */
+  pitEntryLap: (number | undefined)[];
   previousCarTrackSurface: (number | undefined)[];
   /** Current calculated in-class position, indexed by CarIdx. */
   liveClassPosition: (number | undefined)[];
