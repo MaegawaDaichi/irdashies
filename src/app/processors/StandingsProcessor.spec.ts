@@ -91,6 +91,67 @@ describe('StandingsProcessor', () => {
     ]);
   });
 
+  it('keeps the entry lap when the lap changes inside pit road', () => {
+    const processor = new StandingsProcessor();
+    processor.init(session);
+    processor.onFrame(frame(10));
+    const pitFrame = (
+      time: number,
+      lap: number,
+      onPitRoad = true,
+      surface = 2
+    ) =>
+      frame(time, {
+        CarIdxOnPitRoad: { value: [false, onPitRoad] },
+        CarIdxLap: { value: [3, lap] },
+        CarIdxTrackSurface: { value: [3, surface] },
+      });
+
+    processor.onFrame(pitFrame(11, 10));
+    expect(processor.snapshot().pitEntryLap[1]).toBe(10);
+    processor.onFrame(pitFrame(12, 11));
+    expect(processor.snapshot().pitEntryLap[1]).toBe(10);
+    expect(processor.snapshot().lastPitLap[1]).toBe(11);
+    processor.onFrame(pitFrame(13, 11, false, 3));
+    expect(processor.snapshot().pitEntryLap[1]).toBe(10);
+    expect(processor.snapshot().lastPitLap[1]).toBe(11);
+
+    processor.onFrame(pitFrame(20, 15));
+    expect(processor.snapshot().pitEntryLap[1]).toBe(15);
+    processor.onLifecycle({ type: 'disconnect' });
+    expect(processor.snapshot().pitEntryLap).toEqual([]);
+    processor.onFrame(pitFrame(30, 20));
+    expect(processor.snapshot().pitEntryLap[1]).toBe(20);
+    processor.onFrame(pitFrame(1, 2)); // replay scrub / session time reset
+    expect(processor.snapshot().pitEntryLap[1]).toBe(2);
+  });
+
+  it('preserves the entry lap across an out-of-world driver swap', () => {
+    const processor = new StandingsProcessor();
+    processor.init(session);
+    processor.onFrame(
+      frame(10, {
+        CarIdxOnPitRoad: { value: [false, true] },
+        CarIdxLap: { value: [3, 10] },
+        CarIdxTrackSurface: { value: [3, 1] },
+      })
+    );
+    processor.onFrame(
+      frame(11, {
+        CarIdxOnPitRoad: { value: [false, false] },
+        CarIdxTrackSurface: { value: [3, -1] },
+      })
+    );
+    processor.onFrame(
+      frame(12, {
+        CarIdxOnPitRoad: { value: [false, true] },
+        CarIdxLap: { value: [3, 11] },
+        CarIdxTrackSurface: { value: [3, 1] },
+      })
+    );
+    expect(processor.snapshot().pitEntryLap[1]).toBe(10);
+  });
+
   it('projects live positions within each class for race sessions', () => {
     const processor = new StandingsProcessor();
     processor.init({
@@ -175,6 +236,7 @@ describe('StandingsProcessor', () => {
     );
     processor.onLifecycle({ type: 'sessionNumChange' });
     expect(processor.snapshot().lastPitLap).toEqual([]);
+    expect(processor.snapshot().pitEntryLap).toEqual([]);
     processor.onLifecycle({ type: 'disconnect' });
     expect(processor.snapshot()).toMatchObject({
       focusCarIdx: null,

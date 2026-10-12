@@ -55,6 +55,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
   private lastUpdateTime: number | null = null;
   private enabled = true;
   private readonly actualTrackSurface: number[] = [];
+  private readonly previousOnPitRoad: boolean[] = [];
   private readonly classBuffers = new Map<number, number[]>();
   private readonly activeClassIds: number[] = [];
   private readonly resultClassPosition: number[] = [];
@@ -142,6 +143,8 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
       carIdxTrackSurface.length
     );
     this.latest.lastPitLap.length = maxLength;
+    this.latest.pitEntryLap.length = maxLength;
+    this.previousOnPitRoad.length = maxLength;
     this.latest.previousCarTrackSurface.length = maxLength;
     this.actualTrackSurface.length = maxLength;
     for (let carIdx = 0; carIdx < maxLength; carIdx += 1) {
@@ -149,6 +152,15 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
         this.latest.lastPitLap[carIdx] = carIdxLap[carIdx];
       }
       const surface = carIdxTrackSurface[carIdx] ?? -1;
+      // Ignore out-of-world frames during driver swaps so they do not create
+      // a second entry partway through the same stop.
+      if (surface > TrackLocation.NotInWorld) {
+        const onPitRoad = carIdxOnPitRoad[carIdx] ?? false;
+        if (onPitRoad && !this.previousOnPitRoad[carIdx]) {
+          this.latest.pitEntryLap[carIdx] = carIdxLap[carIdx];
+        }
+        this.previousOnPitRoad[carIdx] = onPitRoad;
+      }
       if (
         surface >= 0 &&
         sessionState < SessionState.Checkered &&
@@ -182,6 +194,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
     const version = this.latest.version + 1;
     this.lastUpdateTime = null;
     this.actualTrackSurface.length = 0;
+    this.previousOnPitRoad.length = 0;
     this.activeClassIds.length = 0;
     this.classBuffers.forEach((buffer) => {
       buffer.length = 0;
@@ -216,6 +229,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
     this.latest.sessionTime = 0;
     this.latest.sessionState = 0;
     this.latest.lastPitLap.length = 0;
+    this.latest.pitEntryLap.length = 0;
     this.latest.previousCarTrackSurface.length = 0;
     this.latest.liveClassPosition.length = 0;
     this.latest.version = version;
@@ -243,6 +257,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
       sessionTime: 0,
       sessionState: 0,
       lastPitLap: [],
+      pitEntryLap: [],
       previousCarTrackSurface: [],
       liveClassPosition: [],
       version: 0,

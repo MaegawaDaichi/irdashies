@@ -56,6 +56,7 @@ export interface Standings {
   carId?: number;
   lapTimeDeltas?: number[]; // Array of deltas vs player's recent laps, most recent last
   lastPitLap?: number;
+  pitEntryLap?: number;
   lastLap?: number;
   prevCarTrackSurface?: number;
   carTrackSurface?: number;
@@ -142,7 +143,8 @@ export const createDriverStandings = (
   lastLap: number[],
   prevCarTrackSurface: (number | undefined)[],
   numLapsToShow?: number,
-  lapDeltasVsPlayer?: number[][] // NEW: Pre-calculated deltas from LapTimesStore
+  lapDeltasVsPlayer?: number[][], // NEW: Pre-calculated deltas from LapTimesStore
+  pitEntryLap: (number | undefined)[] = []
 ): Standings[] => {
   const resultsPositions = Array.isArray(currentSession.resultsPositions)
     ? currentSession.resultsPositions
@@ -272,6 +274,7 @@ export const createDriverStandings = (
                 ) // Use most recent laps
               : undefined,
         lastPitLap: lastPitLap[result.CarIdx] ?? undefined,
+        pitEntryLap: pitEntryLap[result.CarIdx] ?? undefined,
         lastLap: lastLap[result.CarIdx] ?? undefined,
         prevCarTrackSurface: prevCarTrackSurface[result.CarIdx] ?? undefined,
         carTrackSurface:
@@ -360,6 +363,7 @@ export const createDriverStandings = (
         carId: driver.CarID,
         lapTimeDeltas: undefined,
         lastPitLap: lastPitLap[driver.CarIdx] ?? undefined,
+        pitEntryLap: pitEntryLap[driver.CarIdx] ?? undefined,
         lastLap: lastLap[driver.CarIdx] ?? undefined,
         prevCarTrackSurface: prevCarTrackSurface[driver.CarIdx] ?? undefined,
         carTrackSurface:

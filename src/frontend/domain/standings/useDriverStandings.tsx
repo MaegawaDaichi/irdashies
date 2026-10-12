@@ -96,6 +96,7 @@ export const useDriverStandings = (
   const isOfficial = useSessionIsOfficial();
   const eventType = useWeekendInfoEventType();
   const lastPitLap = standingsSnapshot?.lastPitLap ?? EMPTY_NUMBERS;
+  const pitEntryLap = standingsSnapshot?.pitEntryLap ?? EMPTY_NUMBERS;
   const lastLap = carIdxLap;
   const prevCarTrackSurface =
     standingsSnapshot?.previousCarTrackSurface ?? EMPTY_NUMBERS;
@@ -137,7 +138,8 @@ export const useDriverStandings = (
       lastLap,
       prevCarTrackSurface,
       lapTimeDeltasEnabled ? numLapDeltas : undefined,
-      lapDeltasForCalc
+      lapDeltasForCalc,
+      pitEntryLap
     );
 
     if (useLivePositionStandings) {
@@ -224,6 +226,7 @@ export const useDriverStandings = (
     fastestLaps,
     sessionType,
     lastPitLap,
+    pitEntryLap,
     lastLap,
     prevCarTrackSurface,
     lapTimeDeltasEnabled,

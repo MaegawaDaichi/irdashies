@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { TrackLocation } from '@irdashies/types';
 import { DriverStatusBadges } from './DriverStatusBadges';
 
 interface PitStatusCellProps {
@@ -7,6 +8,7 @@ interface PitStatusCellProps {
   prevCarTrackSurface?: number;
   lap?: number;
   lastPitLap?: number;
+  pitEntryLap?: number;
   lastLap?: number;
   currentSessionType?: string;
   dnf?: boolean;
@@ -30,6 +32,7 @@ export const PitStatusCell = memo(
     prevCarTrackSurface,
     lap,
     lastPitLap,
+    pitEntryLap,
     lastLap,
     currentSessionType,
     dnf,
@@ -72,10 +75,12 @@ export const PitStatusCell = memo(
           dnf={dnf}
           tow={tow}
           pit={pit}
+          pitInStall={carTrackSurface === TrackLocation.InPitStall}
           out={out}
           lap={lap}
           lastPit={lastPit}
           lastPitLap={lastPitLap}
+          pitEntryLap={pitEntryLap}
           pitStopDuration={pitStopDuration}
           showPitTime={showPitTime}
           pitLapDisplayMode={pitLapDisplayMode}

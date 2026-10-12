@@ -263,7 +263,8 @@ const DisplaySettingsList = ({
                       const cv = settings.config[setting.configKey] as {
                         enabled: boolean;
                         showPitTime?: boolean;
-                        pitLapDisplayMode?: 'lastPitLap' | 'lapsSinceLastPit';
+                        pitLapDisplayMode?:
+                          'lastPitLap' | 'pitEntryLap' | 'lapsSinceLastPit';
                         [key: string]: unknown;
                       };
                       handleConfigChange({
@@ -280,20 +281,22 @@ const DisplaySettingsList = ({
                       const cv = settings.config[setting.configKey] as {
                         enabled: boolean;
                         showPitTime?: boolean;
-                        pitLapDisplayMode?: 'lastPitLap' | 'lapsSinceLastPit';
+                        pitLapDisplayMode?:
+                          'lastPitLap' | 'pitEntryLap' | 'lapsSinceLastPit';
                         [key: string]: unknown;
                       };
                       handleConfigChange({
                         [setting.configKey]: {
                           ...cv,
                           pitLapDisplayMode: e.target.value as
-                            'lastPitLap' | 'lapsSinceLastPit',
+                            'lastPitLap' | 'pitEntryLap' | 'lapsSinceLastPit',
                         },
                       });
                     }}
                     className="bg-slate-700 text-white rounded-md px-2 py-1"
                   >
-                    <option value="lastPitLap">Last pit lap</option>
+                    <option value="lastPitLap">Last pit lap (exit)</option>
+                    <option value="pitEntryLap">Last pit lap (entry)</option>
                     <option value="lapsSinceLastPit">
                       Laps since last pit
                     </option>

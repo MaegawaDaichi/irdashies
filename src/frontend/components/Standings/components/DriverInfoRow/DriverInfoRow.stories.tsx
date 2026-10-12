@@ -1700,3 +1700,39 @@ export const WithLapCountUnknown: Story = {
     } as StandingsWidgetSettings['config'],
   },
 };
+
+export const PitEntryLap: Story = {
+  args: {
+    ...Primary.args,
+    lap: 13,
+    lastLap: 13,
+    lastPitLap: 11,
+    pitEntryLap: 10,
+    carTrackSurface: 3,
+    config: {
+      ...Primary.args?.config,
+      pitStatus: {
+        enabled: true,
+        pitLapDisplayMode: 'pitEntryLap',
+      },
+    } as StandingsWidgetSettings['config'],
+  },
+};
+
+export const PitLane: Story = {
+  args: {
+    ...Primary.args,
+    onPitRoad: true,
+    carTrackSurface: 2,
+    prevCarTrackSurface: 3,
+    lastLap: 10,
+  },
+};
+
+export const PitBox: Story = {
+  args: {
+    ...PitLane.args,
+    carTrackSurface: 1,
+    prevCarTrackSurface: 2,
+  },
+};

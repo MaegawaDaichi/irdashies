@@ -410,6 +410,7 @@ export const Standings = () => {
                           }
                           carId={result.carId}
                           lastPitLap={result.lastPitLap}
+                          pitEntryLap={result.pitEntryLap}
                           lastLap={result.lastLap}
                           carTrackSurface={result.carTrackSurface}
                           prevCarTrackSurface={result.prevCarTrackSurface}
