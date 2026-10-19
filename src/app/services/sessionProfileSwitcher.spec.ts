@@ -19,6 +19,8 @@ import {
 } from './sessionProfileSwitcher';
 import type { SessionProfileMap } from '@irdashies/types';
 import type { SessionLifecycle } from '../sessionLifecycle';
+import { createSessionLifecycle } from '../sessionLifecycle';
+import type { Session, Telemetry } from '@irdashies/types';
 
 /**
  * A stand-in lifecycle that lets a test drive the two events the switcher
@@ -228,6 +230,50 @@ describe('sessionProfileSwitcher', () => {
   });
 
   describe('spotting', () => {
+    it('keeps the watching profile as replay playback and pit location change', () => {
+      const lifecycle = createSessionLifecycle();
+      let current = 'default';
+      const switchProfile = vi.fn((id: string) => {
+        current = id;
+      });
+      const switcher = createSessionProfileSwitcher({
+        lifecycle,
+        getMap: () => ({ practice: 'default', spotting: 'replay' }),
+        getCurrentProfileId: () => current,
+        profileExists: () => true,
+        switchProfile,
+      });
+      lifecycle._onSession({
+        SessionInfo: { Sessions: [{ SessionNum: 0, SessionType: 'Practice' }] },
+      } as unknown as Session);
+      const frame = (isDriving: boolean, inPit: boolean, playing: boolean) =>
+        lifecycle._onTelemetry({
+          SessionNum: { value: [0] },
+          IsOnTrack: { value: [isDriving] },
+          PlayerCarInPitStall: { value: [inPit] },
+          OnPitRoad: { value: [inPit] },
+          IsReplayPlaying: { value: [playing] },
+        } as unknown as Telemetry);
+
+      frame(true, true, false);
+      frame(false, false, false);
+      vi.advanceTimersByTime(SPOTTING_DWELL_MS);
+      expect(current).toBe('replay');
+
+      for (const playing of [true, false, true, false]) {
+        for (const inPit of [true, false]) {
+          frame(false, inPit, playing);
+          vi.advanceTimersByTime(SPOTTING_DWELL_MS);
+          expect(current).toBe('replay');
+        }
+      }
+      expect(switchProfile.mock.calls).toEqual([['replay']]);
+
+      frame(true, true, false);
+      expect(switchProfile.mock.calls).toEqual([['replay'], ['default']]);
+      switcher.dispose();
+    });
+
     it('applies the spotting profile once the player has been out of the car', () => {
       const { emitSessionType, emitDriving, switchProfile } = setup({
         race: 'race',
