@@ -2,7 +2,7 @@ import { Meta, StoryObj } from '@storybook/react-vite';
 import { DriverInfoRow } from './DriverInfoRow';
 import { useCurrentSessionType } from '@irdashies/context';
 import type { StandingsWidgetSettings } from '@irdashies/types';
-import { CAR_ID_TO_CAR_MANUFACTURER } from '../CarManufacturer/carManufacturerMapping';
+import { CAR_ID_TO_CAR_MANUFACTURER } from '../../../shared/CarManufacturer/carManufacturerMapping';
 import { TelemetryDecorator } from '@irdashies/storybook';
 import type { ResolvedDriverTag } from '../../hooks/useDriverTagMap';
 
@@ -91,7 +91,18 @@ export const LappedInterval: Story = {
     config: {
       ...Primary.args?.config,
       gap: { enabled: true, decimalPlaces: 1 },
-      interval: { enabled: true, decimalPlaces: 1 },
+      interval: { enabled: true, decimalPlaces: 1, displayMode: 'laps' },
+    } as StandingsWidgetSettings['config'],
+  },
+};
+
+export const TimeInterval: Story = {
+  args: {
+    ...LappedInterval.args,
+    interval: 125,
+    config: {
+      ...LappedInterval.args?.config,
+      interval: { enabled: true, decimalPlaces: 1, displayMode: 'time' },
     } as StandingsWidgetSettings['config'],
   },
 };
