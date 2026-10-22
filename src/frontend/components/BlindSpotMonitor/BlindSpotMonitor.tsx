@@ -1,3 +1,4 @@
+import { useRadarBars, type RadarBar } from './hooks/useRadarBars';
 import { useBlindSpotMonitor } from './hooks/useBlindSpotMonitor';
 import { useBlindSpotMonitorSettings } from './hooks/useBlindSpotMonitorSettings';
 import { BlindSpotMonitorIndicator } from './components/BlindSpotMonitorIndicator';
@@ -6,6 +7,7 @@ import { useDashboard, useSessionVisibility } from '@irdashies/context';
 import { CarLeftRight } from '@irdashies/types';
 
 export interface BlindSpotMonitorDisplayProps {
+  bars?: readonly RadarBar[];
   show: boolean;
   leftState: CarLeftRight;
   rightState: CarLeftRight;
@@ -34,6 +36,7 @@ const carCountFromState = (state: CarLeftRight): 1 | 2 =>
   state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right ? 2 : 1;
 
 export const BlindSpotMonitorDisplay = ({
+  bars,
   show,
   leftState,
   rightState,
@@ -93,32 +96,43 @@ export const BlindSpotMonitorDisplay = ({
     );
   }
 
+  const activeBars = bars ?? [
+    ...(showLeft
+      ? Array.from({ length: carCountFromState(leftState) }, (_, i) => ({
+          carIdx: -1 - i,
+          side: 'left' as const,
+          percent: leftPercent,
+        }))
+      : []),
+    ...(showRight
+      ? Array.from({ length: carCountFromState(rightState) }, (_, i) => ({
+          carIdx: -3 - i,
+          side: 'right' as const,
+          percent: rightPercent,
+        }))
+      : []),
+  ];
   return (
     <div className="w-full h-full relative">
-      <BlindSpotMonitorIndicator
-        side="left"
-        bgOpacity={bgOpacity}
-        percent={leftPercent}
-        state={leftState}
-        width={width}
-        indicatorLength={indicatorLength}
-        borderSize={borderSize}
-        indicatorColor={indicatorColor}
-        visible={showLeft}
-        disableTransition={disableTransition}
-      />
-      <BlindSpotMonitorIndicator
-        side="right"
-        bgOpacity={bgOpacity}
-        percent={rightPercent}
-        state={rightState}
-        width={width}
-        indicatorLength={indicatorLength}
-        borderSize={borderSize}
-        indicatorColor={indicatorColor}
-        visible={showRight}
-        disableTransition={disableTransition}
-      />
+      {(['left', 'right'] as const).map((side) =>
+        activeBars
+          .filter((bar) => bar.side === side)
+          .map((bar, index) => (
+            <BlindSpotMonitorIndicator
+              key={bar.carIdx}
+              side={side}
+              offset={index * ((width ?? 20) + 4)}
+              bgOpacity={bgOpacity}
+              percent={bar.percent}
+              width={width}
+              indicatorLength={indicatorLength}
+              borderSize={borderSize}
+              indicatorColor={indicatorColor}
+              visible={show}
+              disableTransition={disableTransition}
+            />
+          ))
+      )}
     </div>
   );
 };
@@ -134,6 +148,7 @@ const DEMO_STATE_SIMPLE = {
 
 export const BlindSpotMonitor = () => {
   const state = useBlindSpotMonitor();
+  const radarBars = useRadarBars();
   const settings = useBlindSpotMonitorSettings();
   const { isDemoMode } = useDashboard();
 
@@ -146,12 +161,28 @@ export const BlindSpotMonitor = () => {
 
   return (
     <BlindSpotMonitorDisplay
-      show={activeState.show}
+      bars={
+        isDemoMode
+          ? [
+              { carIdx: 1, side: 'left', percent: 0 },
+              { carIdx: 2, side: 'right', percent: 0.35 },
+              { carIdx: 3, side: 'right', percent: -0.3 },
+            ]
+          : radarBars
+      }
+      show={
+        settings?.displayMode === 'simple'
+          ? activeState.show
+          : isDemoMode || radarBars.length > 0
+      }
       leftState={activeState.leftState}
       rightState={activeState.rightState}
       leftPercent={activeState.leftPercent}
       rightPercent={activeState.rightPercent}
-      disableTransition={activeState.disableTransition}
+      disableTransition={
+        isDemoMode ||
+        (settings?.displayMode === 'simple' && activeState.disableTransition)
+      }
       bgOpacity={settings?.background?.opacity}
       width={settings?.width}
       indicatorLength={settings?.indicatorLength}
