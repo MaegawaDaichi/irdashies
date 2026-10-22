@@ -53,7 +53,10 @@ export const useDriverStandings = (
       numTopDrivers,
     } = {},
     gap: { enabled: gapEnabled } = { enabled: false },
-    interval: { enabled: intervalEnabled } = { enabled: false },
+    interval: {
+      enabled: intervalEnabled,
+      displayMode: intervalDisplayMode = 'time',
+    } = { enabled: false },
     lapTimeDeltas: { enabled: lapTimeDeltasEnabled, numLaps: numLapDeltas } = {
       enabled: false,
       numLaps: 3,
@@ -199,7 +202,8 @@ export const useDriverStandings = (
       ? augmentStandingsWithInterval(
           gapAugmentedGroupedByClass,
           carIdxLap,
-          carIdxLapDistPct
+          carIdxLapDistPct,
+          intervalDisplayMode === 'laps'
         )
       : gapAugmentedGroupedByClass;
 
@@ -238,6 +242,7 @@ export const useDriverStandings = (
     settings?.iratingChange?.estimateInPractice,
     gapEnabled,
     intervalEnabled,
+    intervalDisplayMode,
     carIdxLap,
     carIdxLapDistPct,
     carIdxEstTime,

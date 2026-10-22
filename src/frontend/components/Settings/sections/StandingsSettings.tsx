@@ -362,6 +362,25 @@ const DisplaySettingsList = ({
                   />
                 </div>
               )}
+            {setting.configKey === 'interval' &&
+              settings.config.interval.enabled && (
+                <div className="pl-8 mt-2">
+                  <SettingSelectRow<'time' | 'laps'>
+                    title="Interval Display"
+                    description="Choose how intervals are displayed when cars are a lap or more apart."
+                    value={settings.config.interval.displayMode ?? 'time'}
+                    options={[
+                      { value: 'time', label: 'Time' },
+                      { value: 'laps', label: 'Laps When Lapped' },
+                    ]}
+                    onChange={(displayMode) =>
+                      handleConfigChange({
+                        interval: { ...settings.config.interval, displayMode },
+                      })
+                    }
+                  />
+                </div>
+              )}
             {setting.hasSubSetting &&
               (setting.configKey === 'gap' ||
                 setting.configKey === 'interval') &&

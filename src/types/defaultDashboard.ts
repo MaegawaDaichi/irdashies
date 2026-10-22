@@ -49,6 +49,7 @@ export const defaultDashboard: {
         interval: {
           enabled: false,
           decimalPlaces: 1,
+          displayMode: 'time',
         },
         lastTime: {
           enabled: true,

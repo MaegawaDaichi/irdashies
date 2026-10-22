@@ -159,7 +159,11 @@ export interface StandingsConfig {
   badge: { enabled: boolean; badgeFormat: StandingsBadgeFormat };
   delta: { enabled: boolean };
   gap: { enabled: boolean; decimalPlaces?: number };
-  interval: { enabled: boolean; decimalPlaces?: number };
+  interval: {
+    enabled: boolean;
+    decimalPlaces?: number;
+    displayMode?: 'time' | 'laps';
+  };
   lastTime: { enabled: boolean; timeFormat: TimeFormat };
   fastestTime: { enabled: boolean; timeFormat: TimeFormat };
   background: { opacity: number };
