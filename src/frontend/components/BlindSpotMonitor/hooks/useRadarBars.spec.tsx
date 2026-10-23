@@ -1,10 +1,18 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RadarCar, RadarSnapshot } from '@irdashies/types';
+import {
+  CarLeftRight,
+  type BlindSpotSnapshot,
+  type RadarCar,
+  type RadarSnapshot,
+} from '@irdashies/types';
 import { useRadarBars } from './useRadarBars';
 
 let snapshot: RadarSnapshot;
+let carLeftRight: CarLeftRight;
 vi.mock('@irdashies/context', () => ({
+  useBlindSpotSelector: (selector: (value: BlindSpotSnapshot) => unknown) =>
+    selector({ carLeftRight } as BlindSpotSnapshot),
   useDriverCarIdx: () => 0,
   useRadarSelector: (selector: (value: RadarSnapshot) => unknown) =>
     selector(snapshot),
@@ -23,6 +31,7 @@ const car = (carIdx: number, lane: number, dist: number): RadarCar => ({
 });
 describe('Radar bars', () => {
   beforeEach(() => {
+    carLeftRight = CarLeftRight.Cars2Left;
     snapshot = {
       focusCarIdx: 0,
       playerPct: 0.5,
@@ -40,12 +49,46 @@ describe('Radar bars', () => {
       version: 1,
     };
   });
-  it('keeps independent fore/aft positions for each car in four-wide traffic', () => {
+  it('shows two independent left bars only with the two-left verdict', () => {
     expect(renderHook(() => useRadarBars()).result.current).toEqual([
       { carIdx: 1, side: 'left', percent: -0.5 },
       { carIdx: 2, side: 'left', percent: 0.5 },
-      { carIdx: 3, side: 'right', percent: 0.25 },
     ]);
+  });
+  it.each([CarLeftRight.Off, CarLeftRight.Clear])(
+    'hides all Radar estimates when the spotter is clear/off (%s)',
+    (state) => {
+      carLeftRight = state;
+      expect(renderHook(() => useRadarBars()).result.current).toEqual([]);
+    }
+  );
+  it.each([
+    [CarLeftRight.CarLeft, [2]],
+    [CarLeftRight.CarRight, [3]],
+    [CarLeftRight.CarLeftRight, [2, 3]],
+    [CarLeftRight.Cars2Left, [1, 2]],
+    [CarLeftRight.Cars2Right, [3, 4]],
+  ])(
+    'limits each side to the received spotter verdict (%s)',
+    (state, expected) => {
+      carLeftRight = state as CarLeftRight;
+      snapshot.cars = [...snapshot.cars, car(4, 2, -1), car(5, -2, 3)];
+      expect(
+        renderHook(() => useRadarBars())
+          .result.current.map((bar) => bar.carIdx)
+          .sort()
+      ).toEqual(expected);
+    }
+  );
+  it('removes the extra bar immediately when two-left becomes one-left, then hides on clear', () => {
+    const { result, rerender } = renderHook(() => useRadarBars());
+    expect(result.current).toHaveLength(2);
+    carLeftRight = CarLeftRight.CarLeft;
+    rerender();
+    expect(result.current.map((bar) => bar.carIdx)).toEqual([2]);
+    carLeftRight = CarLeftRight.Clear;
+    rerender();
+    expect(result.current).toEqual([]);
   });
   it('removes departing cars without changing the identity of the remaining bars', () => {
     const { result, rerender } = renderHook(() => useRadarBars());
