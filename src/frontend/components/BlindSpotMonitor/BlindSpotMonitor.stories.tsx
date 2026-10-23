@@ -68,6 +68,9 @@ export default {
         CarLeftRight.Cars2Right,
       ] as CarLeftRight[],
     },
+    multiCarBars: {
+      control: 'boolean',
+    },
     leftPercent: {
       control: { type: 'range', min: -1, max: 1, step: 0.1 },
     },
@@ -511,6 +514,7 @@ export const SimpleModeThresholdColors: Story = {
 export const FourWideBars: StoryObj<typeof BlindSpotMonitorDisplayStory> = {
   args: {
     show: true,
+    multiCarBars: true,
     leftState: CarLeftRight.Cars2Left,
     rightState: CarLeftRight.CarRight,
     leftPercent: 0,

@@ -98,6 +98,12 @@ export const BlindSpotMonitorSettings = () => {
                 {/* Standard settings */}
                 {(settings.config.displayMode ?? 'standard') === 'standard' && (
                   <>
+                    <SettingToggleRow
+                      title="Separate Bar for Each Car"
+                      description="Show a separate bar for each alongside car. Turn off to use one bar per side with a car count."
+                      enabled={settings.config.multiCarBars === true}
+                      onToggle={(v) => handleConfigChange({ multiCarBars: v })}
+                    />
                     <SettingSliderRow
                       title="Background Opacity"
                       value={settings.config.background?.opacity ?? 30}

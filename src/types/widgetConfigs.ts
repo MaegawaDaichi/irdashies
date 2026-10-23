@@ -514,6 +514,8 @@ export interface BlindSpotMonitorConfig {
   thresholdColorsEnabled?: boolean;
   thresholdColor1?: number;
   thresholdColor2?: number;
+  /** Show a separate bar for each alongside car instead of one per side. */
+  multiCarBars?: boolean;
 }
 
 /**

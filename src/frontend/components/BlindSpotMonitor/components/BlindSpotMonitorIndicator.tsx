@@ -1,7 +1,9 @@
+import { CarLeftRight } from '@irdashies/types';
 import { useEffect, useRef, useState } from 'react';
 
 export interface BlindSpotMonitorIndicatorProps {
   side: 'left' | 'right';
+  state?: CarLeftRight;
   bgOpacity?: number;
   percent: number;
   offset?: number;
@@ -15,6 +17,7 @@ export interface BlindSpotMonitorIndicatorProps {
 
 export const BlindSpotMonitorIndicator = ({
   side,
+  state,
   bgOpacity,
   percent,
   offset = 0,
@@ -25,6 +28,9 @@ export const BlindSpotMonitorIndicator = ({
   visible,
   disableTransition,
 }: BlindSpotMonitorIndicatorProps) => {
+  const isTwoCars =
+    state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right;
+  const twoCarsText = side === 'left' ? '2 left' : '2 right';
   const length =
     Number.isFinite(indicatorLength) &&
     indicatorLength >= 10 &&
@@ -91,6 +97,20 @@ export const BlindSpotMonitorIndicator = ({
             transition: enableTransition ? 'top 0.04s linear' : 'none',
           }}
         ></div>
+
+        {isTwoCars && (
+          <div
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${
+              side === 'left' ? 'rotate-180' : ''
+            } bg-black/70 px-2 py-0.5 rounded-full text-amber-500 text-xs font-semibold whitespace-nowrap animate-blink text-shadow-md`}
+            style={{
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed',
+            }}
+          >
+            {twoCarsText}
+          </div>
+        )}
       </div>
     </div>
   );
