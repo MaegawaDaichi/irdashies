@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 
 export interface BlindSpotMonitorIndicatorProps {
   side: 'left' | 'right';
+  state?: CarLeftRight;
   bgOpacity?: number;
   percent: number;
-  state: CarLeftRight;
+  offset?: number;
   width?: number;
   indicatorLength?: number;
   borderSize?: number;
@@ -16,9 +17,10 @@ export interface BlindSpotMonitorIndicatorProps {
 
 export const BlindSpotMonitorIndicator = ({
   side,
+  state,
   bgOpacity,
   percent,
-  state,
+  offset = 0,
   width,
   indicatorLength = 50,
   borderSize,
@@ -28,6 +30,7 @@ export const BlindSpotMonitorIndicator = ({
 }: BlindSpotMonitorIndicatorProps) => {
   const isTwoCars =
     state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right;
+  const twoCarsText = side === 'left' ? '2 left' : '2 right';
   const length =
     Number.isFinite(indicatorLength) &&
     indicatorLength >= 10 &&
@@ -38,7 +41,6 @@ export const BlindSpotMonitorIndicator = ({
   const topPosition = `${(100 - length) / 2 - percent * movementRange}%`;
   const widthPx = `${width ?? 20}px`;
   const indicatorColorHex = `#${(indicatorColor ?? 16096779).toString(16).padStart(6, '0')}`;
-  const twoCarsText = state === CarLeftRight.Cars2Left ? '2 left' : '2 right';
   const transitionTimeoutRef = useRef<number | null>(null);
   const [enableTransition, setEnableTransition] = useState(false);
 
@@ -67,7 +69,7 @@ export const BlindSpotMonitorIndicator = ({
   return (
     <div
       className={`absolute inset-y-0 ${side === 'left' ? 'left-0' : 'right-0'}`}
-      style={{ display: visible ? 'block' : 'none' }}
+      style={{ display: visible ? 'block' : 'none', [side]: offset }}
     >
       <div
         className={`absolute inset-y-0 rounded-full ${side === 'left' ? 'left-0' : 'right-0'} overflow-hidden`}

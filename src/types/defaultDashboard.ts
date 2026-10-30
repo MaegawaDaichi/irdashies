@@ -1104,6 +1104,7 @@ export const defaultDashboard: {
         indicatorColor: 16096779,
         indicatorLength: 50,
         displayMode: 'standard',
+        multiCarBars: false,
         simpleSize: 44,
         simpleVerticalPosition: 50,
         simpleShowCount: true,

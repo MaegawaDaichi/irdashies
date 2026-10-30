@@ -68,6 +68,9 @@ export default {
         CarLeftRight.Cars2Right,
       ] as CarLeftRight[],
     },
+    multiCarBars: {
+      control: 'boolean',
+    },
     leftPercent: {
       control: { type: 'range', min: -1, max: 1, step: 0.1 },
     },
@@ -504,5 +507,22 @@ export const SimpleModeThresholdColors: Story = {
     thresholdColorsEnabled: true,
     thresholdColor1: '#f5a623',
     thresholdColor2: '#ef4444',
+  },
+};
+
+/** Each rival keeps its own fore/aft position, including cars on the same side. */
+export const FourWideBars: StoryObj<typeof BlindSpotMonitorDisplayStory> = {
+  args: {
+    show: true,
+    multiCarBars: true,
+    leftState: CarLeftRight.Cars2Left,
+    rightState: CarLeftRight.CarRight,
+    leftPercent: 0,
+    rightPercent: 0,
+    bars: [
+      { carIdx: 1, side: 'left', percent: 0.4 },
+      { carIdx: 2, side: 'left', percent: -0.4 },
+      { carIdx: 3, side: 'right', percent: 0.15 },
+    ],
   },
 };
