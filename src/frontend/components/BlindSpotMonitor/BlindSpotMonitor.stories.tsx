@@ -8,9 +8,13 @@ import { CarLeftRight } from '@irdashies/types';
 
 type BlindSpotMonitorStoryProps = Omit<
   BlindSpotMonitorDisplayProps,
-  'indicatorColor' | 'thresholdColor1' | 'thresholdColor2'
+  | 'indicatorColor'
+  | 'secondIndicatorColor'
+  | 'thresholdColor1'
+  | 'thresholdColor2'
 > & {
   indicatorColor?: string;
+  secondIndicatorColor?: string;
   thresholdColor1?: string;
   thresholdColor2?: string;
 };
@@ -20,6 +24,7 @@ const parseColor = (c?: string) =>
 
 const BlindSpotMonitorDisplayStory = ({
   indicatorColor,
+  secondIndicatorColor,
   thresholdColor1,
   thresholdColor2,
   ...props
@@ -27,6 +32,7 @@ const BlindSpotMonitorDisplayStory = ({
   <BlindSpotMonitorDisplay
     {...props}
     indicatorColor={parseColor(indicatorColor)}
+    secondIndicatorColor={parseColor(secondIndicatorColor)}
     thresholdColor1={parseColor(thresholdColor1)}
     thresholdColor2={parseColor(thresholdColor2)}
   />
@@ -90,6 +96,9 @@ export default {
       control: { type: 'range', min: 0, max: 10, step: 1 },
     },
     indicatorColor: {
+      control: { type: 'color' },
+    },
+    secondIndicatorColor: {
       control: { type: 'color' },
     },
     displayMode: {
@@ -524,5 +533,13 @@ export const FourWideBars: StoryObj<typeof BlindSpotMonitorDisplayStory> = {
       { carIdx: 2, side: 'left', percent: -0.4 },
       { carIdx: 3, side: 'right', percent: 0.15 },
     ],
+  },
+};
+
+export const DifferentSecondBarColor: Story = {
+  args: {
+    ...FourWideBars.args,
+    indicatorColor: '#f59e0b',
+    secondIndicatorColor: '#ef4444',
   },
 };

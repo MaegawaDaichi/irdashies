@@ -91,4 +91,69 @@ describe('BlindSpotMonitor bar mode option', () => {
     expect(barPositions(container)).toHaveLength(0);
     expect(getByText('2')).toBeTruthy();
   });
+  const colours = (container: HTMLElement) =>
+    Array.from(
+      container.querySelectorAll('div[style*="height: 50%"]'),
+      (bar) => (bar as HTMLElement).style.backgroundColor
+    );
+
+  it('colours only the outer bar on each side with the second colour', () => {
+    const { container, rerender } = render(
+      <BlindSpotMonitorDisplay
+        {...props}
+        multiCarBars
+        indicatorColor={0x00ff00}
+        secondIndicatorColor={0xff0000}
+        bars={[...props.bars, { carIdx: 4, side: 'right', percent: 0.3 }]}
+      />
+    );
+    expect(colours(container)).toEqual([
+      'rgb(255, 0, 0)',
+      'rgb(0, 255, 0)',
+      'rgb(255, 0, 0)',
+      'rgb(0, 255, 0)',
+    ]);
+    rerender(
+      <BlindSpotMonitorDisplay
+        {...props}
+        multiCarBars
+        indicatorColor={0x00ff00}
+        secondIndicatorColor={0xff0000}
+        bars={[props.bars[0]]}
+      />
+    );
+    expect(colours(container)).toEqual(['rgb(0, 255, 0)']);
+    rerender(
+      <BlindSpotMonitorDisplay
+        {...props}
+        indicatorColor={0x00ff00}
+        secondIndicatorColor={0xff0000}
+      />
+    );
+    expect(colours(container)).toEqual(['rgb(0, 255, 0)', 'rgb(0, 255, 0)']);
+  });
+
+  it.each([undefined, null])(
+    'follows the primary colour when the second colour is %s',
+    (secondIndicatorColor) => {
+      const { container, rerender } = render(
+        <BlindSpotMonitorDisplay
+          {...props}
+          multiCarBars
+          indicatorColor={0x00ff00}
+          secondIndicatorColor={secondIndicatorColor}
+        />
+      );
+      expect(colours(container)).toEqual(Array(3).fill('rgb(0, 255, 0)'));
+      rerender(
+        <BlindSpotMonitorDisplay
+          {...props}
+          multiCarBars
+          indicatorColor={0x0000ff}
+          secondIndicatorColor={secondIndicatorColor}
+        />
+      );
+      expect(colours(container)).toEqual(Array(3).fill('rgb(0, 0, 255)'));
+    }
+  );
 });

@@ -20,6 +20,7 @@ export interface BlindSpotMonitorDisplayProps {
   indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
+  secondIndicatorColor?: number | null;
   displayMode?: 'standard' | 'simple';
   simpleSize?: number;
   simpleVerticalPosition?: number;
@@ -50,6 +51,7 @@ export const BlindSpotMonitorDisplay = ({
   indicatorLength,
   borderSize,
   indicatorColor,
+  secondIndicatorColor,
   displayMode = 'standard',
   simpleSize = 44,
   simpleVerticalPosition = 50,
@@ -110,32 +112,35 @@ export const BlindSpotMonitorDisplay = ({
       ];
   return (
     <div className="w-full h-full relative">
-      {(['left', 'right'] as const).map((side) =>
-        activeBars
-          .filter((bar) => bar.side === side)
-          .map((bar, index) => (
-            <BlindSpotMonitorIndicator
-              key={bar.carIdx}
-              side={side}
-              state={
-                multiCarBars
-                  ? undefined
-                  : side === 'left'
-                    ? leftState
-                    : rightState
-              }
-              offset={index * ((width ?? 20) + 4)}
-              bgOpacity={bgOpacity}
-              percent={bar.percent}
-              width={width}
-              indicatorLength={indicatorLength}
-              borderSize={borderSize}
-              indicatorColor={indicatorColor}
-              visible={show}
-              disableTransition={disableTransition}
-            />
-          ))
-      )}
+      {(['left', 'right'] as const).map((side) => {
+        const sideBars = activeBars.filter((bar) => bar.side === side);
+        return sideBars.map((bar, index) => (
+          <BlindSpotMonitorIndicator
+            key={bar.carIdx}
+            side={side}
+            state={
+              multiCarBars
+                ? undefined
+                : side === 'left'
+                  ? leftState
+                  : rightState
+            }
+            offset={index * ((width ?? 20) + 4)}
+            bgOpacity={bgOpacity}
+            percent={bar.percent}
+            width={width}
+            indicatorLength={indicatorLength}
+            borderSize={borderSize}
+            indicatorColor={
+              multiCarBars && index < sideBars.length - 1
+                ? (secondIndicatorColor ?? indicatorColor)
+                : indicatorColor
+            }
+            visible={show}
+            disableTransition={disableTransition}
+          />
+        ));
+      })}
     </div>
   );
 };
@@ -191,6 +196,7 @@ export const BlindSpotMonitor = () => {
       indicatorLength={settings?.indicatorLength}
       borderSize={settings?.borderSize}
       indicatorColor={settings?.indicatorColor}
+      secondIndicatorColor={settings?.secondIndicatorColor}
       displayMode={settings?.displayMode}
       simpleSize={settings?.simpleSize}
       simpleVerticalPosition={settings?.simpleVerticalPosition}
