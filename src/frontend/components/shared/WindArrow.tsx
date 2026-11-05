@@ -28,7 +28,7 @@ export const WindArrow = memo(
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="50 80 650 720"
-        className={`${className} fill-current origin-center transform-gpu transition-[rotate] duration-1000 ease-out`}
+        className={`${className} fill-current origin-center transform-gpu transition-[rotate] duration-200 ease-out`}
         style={{
           rotate: `calc(${normalizedAngle} * 1rad + 0.5turn)`,
         }}

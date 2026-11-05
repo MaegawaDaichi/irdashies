@@ -8,9 +8,13 @@ import { CarLeftRight } from '@irdashies/types';
 
 type BlindSpotMonitorStoryProps = Omit<
   BlindSpotMonitorDisplayProps,
-  'indicatorColor' | 'thresholdColor1' | 'thresholdColor2'
+  | 'indicatorColor'
+  | 'secondIndicatorColor'
+  | 'thresholdColor1'
+  | 'thresholdColor2'
 > & {
   indicatorColor?: string;
+  secondIndicatorColor?: string;
   thresholdColor1?: string;
   thresholdColor2?: string;
 };
@@ -20,6 +24,7 @@ const parseColor = (c?: string) =>
 
 const BlindSpotMonitorDisplayStory = ({
   indicatorColor,
+  secondIndicatorColor,
   thresholdColor1,
   thresholdColor2,
   ...props
@@ -27,6 +32,7 @@ const BlindSpotMonitorDisplayStory = ({
   <BlindSpotMonitorDisplay
     {...props}
     indicatorColor={parseColor(indicatorColor)}
+    secondIndicatorColor={parseColor(secondIndicatorColor)}
     thresholdColor1={parseColor(thresholdColor1)}
     thresholdColor2={parseColor(thresholdColor2)}
   />
@@ -68,6 +74,9 @@ export default {
         CarLeftRight.Cars2Right,
       ] as CarLeftRight[],
     },
+    multiCarBars: {
+      control: 'boolean',
+    },
     leftPercent: {
       control: { type: 'range', min: -1, max: 1, step: 0.1 },
     },
@@ -80,10 +89,16 @@ export default {
     width: {
       control: { type: 'range', min: 5, max: 100, step: 1 },
     },
+    indicatorLength: {
+      control: { type: 'range', min: 10, max: 100, step: 1 },
+    },
     borderSize: {
       control: { type: 'range', min: 0, max: 10, step: 1 },
     },
     indicatorColor: {
+      control: { type: 'color' },
+    },
+    secondIndicatorColor: {
       control: { type: 'color' },
     },
     displayMode: {
@@ -131,6 +146,18 @@ export const CarOnRight: Story = {
     rightState: CarLeftRight.CarRight,
     leftPercent: 0,
     rightPercent: 0.5,
+    bgOpacity: 30,
+  },
+};
+
+export const FullLength: Story = {
+  args: {
+    show: true,
+    leftState: CarLeftRight.CarLeft,
+    rightState: CarLeftRight.CarRight,
+    leftPercent: 0,
+    rightPercent: 0,
+    indicatorLength: 100,
     bgOpacity: 30,
   },
 };
@@ -214,7 +241,7 @@ export const TwoCarsOnRight: Story = {
 
 type AnimationProps = Pick<
   BlindSpotMonitorDisplayProps,
-  'width' | 'borderSize' | 'bgOpacity' | 'indicatorColor'
+  'width' | 'indicatorLength' | 'borderSize' | 'bgOpacity' | 'indicatorColor'
 >;
 
 const CarPassingAnimation = (props: AnimationProps) => {
@@ -397,6 +424,7 @@ const toAnimationProps = (
   args: BlindSpotMonitorStoryProps
 ): AnimationProps => ({
   width: args.width,
+  indicatorLength: args.indicatorLength,
   borderSize: args.borderSize,
   bgOpacity: args.bgOpacity,
   indicatorColor: args.indicatorColor
@@ -488,5 +516,30 @@ export const SimpleModeThresholdColors: Story = {
     thresholdColorsEnabled: true,
     thresholdColor1: '#f5a623',
     thresholdColor2: '#ef4444',
+  },
+};
+
+/** Each rival keeps its own fore/aft position, including cars on the same side. */
+export const FourWideBars: StoryObj<typeof BlindSpotMonitorDisplayStory> = {
+  args: {
+    show: true,
+    multiCarBars: true,
+    leftState: CarLeftRight.Cars2Left,
+    rightState: CarLeftRight.CarRight,
+    leftPercent: 0,
+    rightPercent: 0,
+    bars: [
+      { carIdx: 1, side: 'left', percent: 0.4 },
+      { carIdx: 2, side: 'left', percent: -0.4 },
+      { carIdx: 3, side: 'right', percent: 0.15 },
+    ],
+  },
+};
+
+export const DifferentSecondBarColor: Story = {
+  args: {
+    ...FourWideBars.args,
+    indicatorColor: '#f59e0b',
+    secondIndicatorColor: '#ef4444',
   },
 };

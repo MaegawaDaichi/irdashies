@@ -412,8 +412,22 @@ describe('sessionLifecycle', () => {
   describe('driving state', () => {
     const drivingCases: [string, Record<string, boolean>, boolean][] = [
       ['on track', { IsOnTrack: true }, true],
-      ['stationary in the pit box', { PlayerCarInPitStall: true }, true],
-      ['rolling down pit lane', { OnPitRoad: true }, true],
+      [
+        'stationary in the pit box',
+        { IsOnTrack: true, PlayerCarInPitStall: true },
+        true,
+      ],
+      ['rolling down pit lane', { IsOnTrack: true, OnPitRoad: true }, true],
+      [
+        'watching a car in the pit box',
+        { IsOnTrack: false, PlayerCarInPitStall: true },
+        false,
+      ],
+      [
+        'watching a car on pit road',
+        { IsOnTrack: false, OnPitRoad: true },
+        false,
+      ],
       ['in the garage', { IsOnTrack: true, IsInGarage: true }, false],
       ['watching a replay', { IsOnTrack: true, IsReplayPlaying: true }, false],
       ['spotting for a team-mate', { IsOnTrack: false }, false],

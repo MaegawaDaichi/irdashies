@@ -121,11 +121,12 @@ export function createSessionLifecycle(): SessionLifecycle {
       (telemetry[key] as { value?: unknown[] } | undefined)?.value?.[0] ===
       true;
 
-    // Mirrors the renderer's useDrivingState: in the car counts even when
-    // stationary in the pit box, while the garage and replay playback do not.
-    const inCar =
-      flag('IsOnTrack') || flag('PlayerCarInPitStall') || flag('OnPitRoad');
-    const isDriving = inCar && !flag('IsInGarage') && !flag('IsReplayPlaying');
+    // IsOnTrack includes the player being in the car, even in the pit box.
+    // Pit location flags describe the car, not whether the player is driving
+    // it. They can remain true while watching or pausing a replay and must not
+    // send the profile back to the session layout.
+    const isDriving =
+      flag('IsOnTrack') && !flag('IsInGarage') && !flag('IsReplayPlaying');
 
     if (isDriving === lastIsDriving) return;
     lastIsDriving = isDriving;

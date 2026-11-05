@@ -1,3 +1,4 @@
+import { useRadarBars, type RadarBar } from './hooks/useRadarBars';
 import { useBlindSpotMonitor } from './hooks/useBlindSpotMonitor';
 import { useBlindSpotMonitorSettings } from './hooks/useBlindSpotMonitorSettings';
 import { BlindSpotMonitorIndicator } from './components/BlindSpotMonitorIndicator';
@@ -6,6 +7,8 @@ import { useDashboard, useSessionVisibility } from '@irdashies/context';
 import { CarLeftRight } from '@irdashies/types';
 
 export interface BlindSpotMonitorDisplayProps {
+  bars?: readonly RadarBar[];
+  multiCarBars?: boolean;
   show: boolean;
   leftState: CarLeftRight;
   rightState: CarLeftRight;
@@ -14,8 +17,10 @@ export interface BlindSpotMonitorDisplayProps {
   disableTransition?: boolean;
   bgOpacity?: number;
   width?: number;
+  indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
+  secondIndicatorColor?: number | null;
   displayMode?: 'standard' | 'simple';
   simpleSize?: number;
   simpleVerticalPosition?: number;
@@ -33,6 +38,8 @@ const carCountFromState = (state: CarLeftRight): 1 | 2 =>
   state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right ? 2 : 1;
 
 export const BlindSpotMonitorDisplay = ({
+  bars,
+  multiCarBars = false,
   show,
   leftState,
   rightState,
@@ -41,8 +48,10 @@ export const BlindSpotMonitorDisplay = ({
   disableTransition = false,
   bgOpacity,
   width,
+  indicatorLength,
   borderSize,
   indicatorColor,
+  secondIndicatorColor,
   displayMode = 'standard',
   simpleSize = 44,
   simpleVerticalPosition = 50,
@@ -91,30 +100,47 @@ export const BlindSpotMonitorDisplay = ({
     );
   }
 
+  const activeBars: readonly RadarBar[] = multiCarBars
+    ? (bars ?? [])
+    : [
+        ...(showLeft
+          ? [{ carIdx: -1, side: 'left' as const, percent: leftPercent }]
+          : []),
+        ...(showRight
+          ? [{ carIdx: -2, side: 'right' as const, percent: rightPercent }]
+          : []),
+      ];
   return (
     <div className="w-full h-full relative">
-      <BlindSpotMonitorIndicator
-        side="left"
-        bgOpacity={bgOpacity}
-        percent={leftPercent}
-        state={leftState}
-        width={width}
-        borderSize={borderSize}
-        indicatorColor={indicatorColor}
-        visible={showLeft}
-        disableTransition={disableTransition}
-      />
-      <BlindSpotMonitorIndicator
-        side="right"
-        bgOpacity={bgOpacity}
-        percent={rightPercent}
-        state={rightState}
-        width={width}
-        borderSize={borderSize}
-        indicatorColor={indicatorColor}
-        visible={showRight}
-        disableTransition={disableTransition}
-      />
+      {(['left', 'right'] as const).map((side) => {
+        const sideBars = activeBars.filter((bar) => bar.side === side);
+        return sideBars.map((bar, index) => (
+          <BlindSpotMonitorIndicator
+            key={bar.carIdx}
+            side={side}
+            state={
+              multiCarBars
+                ? undefined
+                : side === 'left'
+                  ? leftState
+                  : rightState
+            }
+            offset={index * ((width ?? 20) + 4)}
+            bgOpacity={bgOpacity}
+            percent={bar.percent}
+            width={width}
+            indicatorLength={indicatorLength}
+            borderSize={borderSize}
+            indicatorColor={
+              multiCarBars && index < sideBars.length - 1
+                ? (secondIndicatorColor ?? indicatorColor)
+                : indicatorColor
+            }
+            visible={show}
+            disableTransition={disableTransition}
+          />
+        ));
+      })}
     </div>
   );
 };
@@ -130,11 +156,14 @@ const DEMO_STATE_SIMPLE = {
 
 export const BlindSpotMonitor = () => {
   const state = useBlindSpotMonitor();
+  const radarBars = useRadarBars();
   const settings = useBlindSpotMonitorSettings();
   const { isDemoMode } = useDashboard();
 
   const sessionVisible = useSessionVisibility(settings?.sessionVisibility);
   const activeState = isDemoMode ? DEMO_STATE_SIMPLE : state;
+  const multiCarBars = settings?.multiCarBars === true;
+  const useMultipleBars = multiCarBars && settings?.displayMode !== 'simple';
 
   if (!isDemoMode && !sessionVisible) return <></>;
   if (!isDemoMode && settings?.showOnlyWhenOnTrack && !state.isOnTrack)
@@ -142,16 +171,32 @@ export const BlindSpotMonitor = () => {
 
   return (
     <BlindSpotMonitorDisplay
-      show={activeState.show}
+      multiCarBars={multiCarBars}
+      bars={
+        isDemoMode
+          ? [
+              { carIdx: 1, side: 'left', percent: 0 },
+              { carIdx: 2, side: 'right', percent: 0.35 },
+              { carIdx: 3, side: 'right', percent: -0.3 },
+            ]
+          : radarBars
+      }
+      show={
+        useMultipleBars ? isDemoMode || radarBars.length > 0 : activeState.show
+      }
       leftState={activeState.leftState}
       rightState={activeState.rightState}
       leftPercent={activeState.leftPercent}
       rightPercent={activeState.rightPercent}
-      disableTransition={activeState.disableTransition}
+      disableTransition={
+        isDemoMode || (!useMultipleBars && activeState.disableTransition)
+      }
       bgOpacity={settings?.background?.opacity}
       width={settings?.width}
+      indicatorLength={settings?.indicatorLength}
       borderSize={settings?.borderSize}
       indicatorColor={settings?.indicatorColor}
+      secondIndicatorColor={settings?.secondIndicatorColor}
       displayMode={settings?.displayMode}
       simpleSize={settings?.simpleSize}
       simpleVerticalPosition={settings?.simpleVerticalPosition}

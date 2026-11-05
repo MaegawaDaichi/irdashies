@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 
 export interface BlindSpotMonitorIndicatorProps {
   side: 'left' | 'right';
+  state?: CarLeftRight;
   bgOpacity?: number;
   percent: number;
-  state: CarLeftRight;
+  offset?: number;
   width?: number;
+  indicatorLength?: number;
   borderSize?: number;
   indicatorColor?: number;
   visible: boolean;
@@ -15,10 +17,12 @@ export interface BlindSpotMonitorIndicatorProps {
 
 export const BlindSpotMonitorIndicator = ({
   side,
+  state,
   bgOpacity,
   percent,
-  state,
+  offset = 0,
   width,
+  indicatorLength = 50,
   borderSize,
   indicatorColor,
   visible,
@@ -26,10 +30,17 @@ export const BlindSpotMonitorIndicator = ({
 }: BlindSpotMonitorIndicatorProps) => {
   const isTwoCars =
     state === CarLeftRight.Cars2Left || state === CarLeftRight.Cars2Right;
-  const topPosition = `${25 - percent * 75}%`;
+  const twoCarsText = side === 'left' ? '2 left' : '2 right';
+  const length =
+    Number.isFinite(indicatorLength) &&
+    indicatorLength >= 10 &&
+    indicatorLength <= 100
+      ? indicatorLength
+      : 50;
+  const movementRange = (100 + length) / 2;
+  const topPosition = `${(100 - length) / 2 - percent * movementRange}%`;
   const widthPx = `${width ?? 20}px`;
   const indicatorColorHex = `#${(indicatorColor ?? 16096779).toString(16).padStart(6, '0')}`;
-  const twoCarsText = state === CarLeftRight.Cars2Left ? '2 left' : '2 right';
   const transitionTimeoutRef = useRef<number | null>(null);
   const [enableTransition, setEnableTransition] = useState(false);
 
@@ -58,7 +69,7 @@ export const BlindSpotMonitorIndicator = ({
   return (
     <div
       className={`absolute inset-y-0 ${side === 'left' ? 'left-0' : 'right-0'}`}
-      style={{ display: visible ? 'block' : 'none' }}
+      style={{ display: visible ? 'block' : 'none', [side]: offset }}
     >
       <div
         className={`absolute inset-y-0 rounded-full ${side === 'left' ? 'left-0' : 'right-0'} overflow-hidden`}
@@ -77,9 +88,10 @@ export const BlindSpotMonitorIndicator = ({
         }}
       >
         <div
-          className={`absolute rounded-full h-[50%] left-1/2 -translate-x-1/2 flex items-center justify-center`}
+          className={`absolute rounded-full left-1/2 -translate-x-1/2 flex items-center justify-center`}
           style={{
             top: topPosition,
+            height: `${length}%`,
             width: widthPx,
             backgroundColor: indicatorColorHex,
             transition: enableTransition ? 'top 0.04s linear' : 'none',

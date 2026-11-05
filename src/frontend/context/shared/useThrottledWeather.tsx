@@ -31,9 +31,8 @@ const selectWeather = (snapshot: SessionBarSnapshot) =>
   ] as const;
 
 /**
- * Subscribes to weather telemetry data but only updates React state
- * at a throttled interval. Weather data changes slowly so 60 FPS
- * updates are unnecessary.
+ * Subscribes to weather data from the session-bar channel (up to 5 Hz).
+ * Only updates React state when the selected weather values change.
  *
  * YawNorth is a single player-perspective value (length 1) — not a per-car
  * array. It does not follow CamCarIdx when spectating, so windYaw always

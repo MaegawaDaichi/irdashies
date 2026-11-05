@@ -6,6 +6,7 @@ import {
   useTrackStateSelector,
   useSessionVisibility,
   useThrottledWeather,
+  useActiveSimulator,
 } from '@irdashies/context';
 import { useTrackTemperature } from './hooks/useTrackTemperature';
 import { useWindDemoData } from '../../domain/weather/useWindDemoData';
@@ -13,7 +14,7 @@ import { WeatherTemp } from './WeatherTemp/WeatherTemp';
 import { WeatherTrackWetness } from './WeatherTrackWetness/WeatherTrackWetness';
 import { WeatherTrackRubbered } from './WeatherTrackRubbered/WeatherTrackRubbered';
 import { WindDirection } from './WindDirection/WindDirection';
-import { useTrackRubberedState } from './hooks/useTrackRubberedState';
+import { useTrackRubberedState } from '@irdashies/domain/weather/useTrackRubberedState';
 import { useWeatherSettings } from './hooks/useWeatherSettings';
 import { WeatherHumidity } from './WeatherHumidity/WeatherHumidity';
 import { WeatherPrecipitation } from './WeatherPrecipitation/WeatherPrecipitation';
@@ -35,6 +36,9 @@ export const Weather = () => {
   const displayUnits = useSessionBarSelector(sessionBarSelectors.displayUnits);
   const isOnTrack = useTrackStateSelector(trackStateSelectors.isOnTrack);
   const isSessionVisible = useSessionVisibility(settings?.sessionVisibility);
+  // LMU simulates no wind: its wind vector is always zero, so the cell could
+  // only ever show 0 with the arrow fixed on a headwind.
+  const simulatesWind = useActiveSimulator() !== 'lmu';
 
   // Determine actual unit to use: auto uses iRacing's DisplayUnits setting
   const unitSetting = settings?.units ?? 'auto';
@@ -42,8 +46,7 @@ export const Weather = () => {
     unitSetting === 'auto' ? displayUnits === 1 : unitSetting === 'Metric';
   const actualUnit = isMetric ? 'Metric' : 'Imperial';
 
-  // Weather telemetry - throttled to ~1 update/sec since weather data
-  // changes slowly and doesn't need 60 FPS updates
+  // Weather telemetry comes from the session-bar channel at up to 5 Hz.
   const weather = useThrottledWeather();
 
   const { trackTemp, airTemp } = useTrackTemperature({
@@ -75,7 +78,10 @@ export const Weather = () => {
     const allColumns: { id: WeatherColumnId; enabled: boolean }[] = [
       { id: 'trackTemp', enabled: settings?.trackTemp?.enabled ?? true },
       { id: 'airTemp', enabled: settings?.airTemp?.enabled ?? true },
-      { id: 'wind', enabled: settings?.wind?.enabled ?? true },
+      {
+        id: 'wind',
+        enabled: simulatesWind && (settings?.wind?.enabled ?? true),
+      },
       { id: 'humidity', enabled: settings?.humidity?.enabled ?? true },
       {
         id: 'precipitation',
@@ -104,6 +110,7 @@ export const Weather = () => {
     settings?.trackTemp?.enabled,
     settings?.airTemp?.enabled,
     settings?.wind?.enabled,
+    simulatesWind,
     settings?.humidity?.enabled,
     settings?.precipitation?.enabled,
     settings?.wetness?.enabled,

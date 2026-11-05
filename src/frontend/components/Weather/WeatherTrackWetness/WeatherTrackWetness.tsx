@@ -38,6 +38,21 @@ export const WeatherTrackWetness = memo(
         : 'Unknown';
     const trackStateLabel = trackState || FALLBACK_TRACK_STATE;
 
+    const barColor =
+      safeTrackMoisture === 1 || safeTrackMoisture === 2
+        ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]'
+        : safeTrackMoisture === 3
+          ? 'bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.5)]'
+          : safeTrackMoisture === 4
+            ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'
+            : safeTrackMoisture === 5
+              ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]'
+              : safeTrackMoisture === 6
+                ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                : safeTrackMoisture === 7
+                  ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]'
+                  : 'bg-gray-500 shadow-[0_0_8px_rgba(107,114,128,0.5)]';
+
     if (variant === 'compact') {
       return (
         <div className="bg-slate-800/70 px-2 py-1 rounded-sm min-w-0">
@@ -85,7 +100,7 @@ export const WeatherTrackWetness = memo(
               aria-valuemin={0}
               aria-valuemax={100}
               style={{ width: `${trackWetnessPct}%` }}
-              className="bg-blue-500 h-2 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+              className={`${barColor} h-2 rounded-full transition-all duration-1000 ease-in-out`}
             ></div>
           </div>
           <DropIcon size={14} className="text-blue-400 flex-none" />

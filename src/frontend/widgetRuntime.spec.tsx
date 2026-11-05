@@ -49,7 +49,7 @@ describe('widget runtime metadata', () => {
       'pitlanehelper',
       'tachometer',
       'flag',
-      'twitchchat',
+      'streamchat',
       'laptimelog',
       'infobar',
       'slowcarahead',
@@ -88,8 +88,8 @@ describe('widget runtime metadata', () => {
 
   it('requests a dedicated 25 Hz blind-spot snapshot', () => {
     expect(getWidgetRuntimeDefinition('blindspotmonitor')).toMatchObject({
-      channels: ['blind-spot.snapshot'],
-      channelRates: { 'blind-spot.snapshot': 25 },
+      channels: ['blind-spot.snapshot', 'radar.snapshot'],
+      channelRates: { 'blind-spot.snapshot': 25, 'radar.snapshot': 25 },
     });
   });
 
@@ -124,11 +124,16 @@ describe('widget runtime metadata', () => {
     expect(getWidgetRuntimeDefinition('battle')).toMatchObject({
       channels: [
         'car-speeds.snapshot',
+        'lap-history.snapshot',
         'relative-gaps.snapshot',
         'standings.snapshot',
         'track-state.snapshot',
       ],
-      channelRates: { 'car-speeds.snapshot': 10, 'standings.snapshot': 5 },
+      channelRates: {
+        'car-speeds.snapshot': 10,
+        'lap-history.snapshot': 2,
+        'standings.snapshot': 5,
+      },
     });
     expect(getWidgetRuntimeDefinition('slowcarahead')).toMatchObject({
       channels: ['car-speeds.snapshot', 'track-state.snapshot'],

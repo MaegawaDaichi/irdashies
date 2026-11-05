@@ -25,6 +25,8 @@ export interface DashboardWidget {
   alwaysEnabled?: boolean;
   /** The layout of the window for the widget on the dashboard. */
   layout: WidgetLayout;
+  /** Content scale in percent, independent of the layout. Unset means 100%. */
+  scale?: number;
   /** Configuration for the widget. */
   config?: Record<string, unknown>;
   /**
@@ -106,28 +108,7 @@ export interface GeneralSettingsType {
   fontSize?: FontSize;
   fontWeight?:
     'light' | 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
-  colorPalette?:
-    | 'default'
-    | 'black'
-    | 'red'
-    | 'orange'
-    | 'amber'
-    | 'yellow'
-    | 'lime'
-    | 'green'
-    | 'emerald'
-    | 'teal'
-    | 'cyan'
-    | 'sky'
-    | 'blue'
-    | 'indigo'
-    | 'violet'
-    | 'purple'
-    | 'fuchsia'
-    | 'pink'
-    | 'rose'
-    | 'zinc'
-    | 'stone';
+  colorPalette?: 'default' | 'black' | 'zinc' | 'stone';
   showOnlyWhenOnTrack?: boolean;
   highlightColor?: number;
   skipTaskbar?: boolean;
@@ -144,6 +125,8 @@ export interface GeneralSettingsType {
   simulator?: SimulatorPreference;
   compactMode?: 'off' | 'compact' | 'ultra';
   overlayAlwaysOnTop?: boolean;
+  /** Experimental individual windows while locked; unset retains display windows. */
+  overlayWindowMode?: 'display' | 'widget';
   enableNetworkAccess?: boolean;
   /**
    * Controls the built-in component/OBS web server (see app/webserver).
