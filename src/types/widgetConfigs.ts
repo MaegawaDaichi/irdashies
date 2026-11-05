@@ -1,6 +1,7 @@
 import type { DashboardWidget } from './dashboardLayout';
 import type { CornerNameOverlayConfig } from './cornerName';
 import type { LapTraceColors, LapTraceSound, LapTraceSource } from './lapTrace';
+import type { LmuBadgeFormat } from './lmu';
 
 // ===========================
 // Shared primitive types
@@ -68,6 +69,7 @@ export interface SessionBarConfig {
   sessionClockTime: { enabled: boolean };
   trackWetness: { enabled: boolean };
   precipitation?: { enabled: boolean };
+  humidity?: { enabled: boolean };
   airTemperature: { enabled: boolean; unit: TemperatureUnit };
   trackTemperature: { enabled: boolean; unit: TemperatureUnit };
   wind?: { enabled: boolean; speedPosition?: 'left' | 'right' };
@@ -82,6 +84,8 @@ export interface SessionBarConfig {
     hideIfSingleDriver?: boolean;
   };
   classRank?: { enabled: boolean };
+  /** LMU's track-limits penalty points for the player. */
+  trackLimits?: { enabled: boolean };
   displayOrder: string[];
   foreground?: { opacity: number };
 }
@@ -153,13 +157,34 @@ export type RelativeBadgeFormat =
 
 export interface StandingsConfig {
   customClassOrdering: boolean;
-  scale?: number;
   iratingChange: { enabled: boolean; estimateInPractice?: boolean };
   positionChange: { enabled: boolean };
-  badge: { enabled: boolean; badgeFormat: StandingsBadgeFormat };
+  /**
+   * The LMU achievement badge, as its own column.
+   *
+   * Separate from `badge`, which is the rank pair: this is the single marker
+   * the rating service reports in `profile.badge` (`sr-saint` and the like),
+   * and it is drawn from bundled artwork. Absent on every other sim, so the
+   * column simply renders nothing there.
+   */
+  lmuBadge: { enabled: boolean };
+  badge: {
+    enabled: boolean;
+    badgeFormat: StandingsBadgeFormat;
+    /** How the LMU rank pair is drawn; see LmuBadgeFormat. */
+    lmuFormat?: LmuBadgeFormat;
+  };
   delta: { enabled: boolean };
-  gap: { enabled: boolean; decimalPlaces?: number };
-  interval: { enabled: boolean; decimalPlaces?: number };
+  gap: {
+    enabled: boolean;
+    decimalPlaces?: number;
+    reference?: 'classLeader' | 'player';
+  };
+  interval: {
+    enabled: boolean;
+    decimalPlaces?: number;
+    displayMode?: 'time' | 'laps';
+  };
   lastTime: { enabled: boolean; timeFormat: TimeFormat };
   fastestTime: { enabled: boolean; timeFormat: TimeFormat };
   background: { opacity: number };
@@ -173,6 +198,8 @@ export interface StandingsConfig {
     minPlayerClassDrivers: number;
     numTopDrivers: number;
     topDriverDivider?: 'none' | 'theme' | 'highlight';
+    /** Lists every driver instead of the slice around the player. */
+    showAll?: boolean;
   };
   compound: { enabled: boolean };
   carManufacturer: { enabled: boolean; hideIfSingleMake?: boolean };
@@ -180,6 +207,13 @@ export interface StandingsConfig {
   lapTimeDeltas: { enabled: boolean; numLaps: number; decimalPlaces: number };
   avgLapTime: { enabled: boolean; numLaps: number; timeFormat: TimeFormat };
   lapCount: { enabled: boolean };
+  /** LMU's track-limits penalty points. Absent on sims without them. */
+  trackLimits: { enabled: boolean };
+  /**
+   * LMU's remaining virtual energy, or fuel for a car without it.
+   * Absent on sims with neither.
+   */
+  lmuVirtualEnergy: { enabled: boolean };
   titleBar: { enabled: boolean; progressBar: { enabled: boolean } };
   headerBar: SessionBarConfig;
   footerBar: SessionBarConfig;
@@ -218,7 +252,21 @@ export interface RelativeConfig {
    * repairs. Drivers driving down pit road (entering or exiting) still show.
    */
   hideDriversInPitStall?: boolean;
-  badge: { enabled: boolean; badgeFormat: RelativeBadgeFormat };
+  /**
+   * The LMU achievement badge, as its own column.
+   *
+   * Separate from `badge`, which is the rank pair: this is the single marker
+   * the rating service reports in `profile.badge` (`sr-saint` and the like),
+   * and it is drawn from bundled artwork. Absent on every other sim, so the
+   * column simply renders nothing there.
+   */
+  lmuBadge: { enabled: boolean };
+  badge: {
+    enabled: boolean;
+    badgeFormat: RelativeBadgeFormat;
+    /** How the LMU rank pair is drawn; see LmuBadgeFormat. */
+    lmuFormat?: LmuBadgeFormat;
+  };
   iratingChange: { enabled: boolean };
   positionChange?: { enabled: boolean };
   delta: { enabled: boolean; precision: number };
@@ -229,6 +277,13 @@ export interface RelativeConfig {
   pushToPass: { enabled: boolean };
   driverTag: { enabled: boolean; widthPx?: number };
   lapTimeDeltas: { enabled: boolean; numLaps: number; decimalPlaces: number };
+  /** LMU's track-limits penalty points. Absent on sims without them. */
+  trackLimits: { enabled: boolean };
+  /**
+   * LMU's remaining virtual energy, or fuel for a car without it.
+   * Absent on sims with neither.
+   */
+  lmuVirtualEnergy: { enabled: boolean };
   displayOrder: string[];
   useLivePosition?: boolean;
   sessionVisibility: SessionVisibilitySettings;
@@ -344,6 +399,12 @@ export interface InputConfig {
   displayOrder: string[];
   /** When set, decides which elements show and where. Supersedes the enabled flags and displayOrder. */
   layoutTree?: LayoutNode;
+  /** Briefly flash the gear number on an upshift or downshift. */
+  gearFlash?: {
+    enabled: boolean;
+    upColor: string;
+    downColor: string;
+  };
   /** Flash the whole layout at the redline or at the Tachometer custom shift points. */
   shiftFlash?: {
     enabled: boolean;
@@ -463,7 +524,9 @@ export interface FuelConfig {
   showFuelScenarios: boolean;
   showFuelRequired: boolean;
   showFuelHistory: boolean;
-  fuelHistoryType: 'line' | 'histogram';
+  fuelHistoryType: 'line' | 'histogram' | 'table';
+  /** Number of completed laps shown in the history table. */
+  fuelHistoryLapCount?: number;
   safetyMargin: number;
   manualTarget?: number;
   background: { opacity: number };
@@ -729,12 +792,7 @@ export type RadarProfileConfig = Pick<RadarConfig, RadarProfileKey>;
 /** The part of the radar tuning the telemetry processor reads. */
 export type RadarProcessorTuning = Pick<
   RadarTuning,
-  | 'speedSmoothing'
-  | 'laneRate'
-  | 'overlapSearchM'
-  | 'poleLearnAfterS'
-  | 'poleFlipFrames'
-  | 'gridMaxSpeedMs'
+  'speedSmoothing' | 'laneRate' | 'overlapSearchM' | 'gridMaxSpeedMs'
 >;
 
 export const DEFAULT_RADAR_TUNING: RadarTuning = {
@@ -746,8 +804,6 @@ export const DEFAULT_RADAR_TUNING: RadarTuning = {
   speedSmoothing: 0.25,
   laneRate: 4,
   overlapSearchM: 8,
-  poleLearnAfterS: 15,
-  poleFlipFrames: 30,
   gridMaxSpeedMs: 3,
 };
 
@@ -763,16 +819,12 @@ export interface RadarTuning {
   debugLabels: boolean;
   /** Write how long a frame takes to draw. */
   showFrameTime: boolean;
-  /** Weight of the newest sample in the per-car speed average, 0-1. */
+  /** Weight of a sample 40 ms after the last (25 Hz) in the per-car speed average, 0-1. */
   speedSmoothing: number;
   /** Lanes per second a car may move when it changes lane. */
   laneRate: number;
   /** Metres either side searched for an overlapping car. */
   overlapSearchM: number;
-  /** Seconds after the green flag in which the pole side is learnt. */
-  poleLearnAfterS: number;
-  /** Frames in a row the spotter must disagree before the side flips. */
-  poleFlipFrames: number;
   /** Below this speed, in m/s, cars count as parked on the grid. */
   gridMaxSpeedMs: number;
 }
@@ -851,11 +903,21 @@ export interface PitlaneHelperConfig {
   sessionVisibility: SessionVisibilitySettings;
 }
 
-export interface TwitchChatConfig {
-  fontSize: number;
-  channel: string;
-  background: { opacity: number };
-  autoHide: { enabled: boolean; intervalSeconds: number };
+export interface StreamChatConfig {
+  display: {
+    fontSize: number;
+    background: { opacity: number };
+    autoHide: { enabled: boolean; intervalSeconds: number };
+    showPlatformIcons: boolean;
+  };
+  twitch: {
+    /** Twitch channel name; empty disables Twitch chat. */
+    channel: string;
+  };
+  youtube: {
+    /** YouTube handle including the leading `@`; empty disables YouTube chat. */
+    channel: string;
+  };
 }
 
 export interface HeartRateConfig {
@@ -1182,6 +1244,9 @@ export type SessionRetention = 'all' | 5 | 10 | 20;
 /** Which quantity the lap graph's y axis measures. */
 export type LapGraphYAxisMode = 'trace' | 'position' | 'gap';
 
+/** Whether the trace and gap y axis fits the bold lines or every car. */
+export type LapGraphAxisFit = 'shown' | 'all';
+
 export interface LapGraphConfig {
   /** Which y axis the graph opens on. */
   yAxisMode: LapGraphYAxisMode;
@@ -1189,10 +1254,16 @@ export interface LapGraphConfig {
   lapWindow: number;
   /** Auto-pin the player, the class leader, and the cars around the player. */
   autoPin: boolean;
+  /** Which cars the trace and gap y axis is sized to. */
+  axisFit: LapGraphAxisFit;
+  /** Gap mode ceiling in seconds. 0 means no cap. */
+  gapMaxSeconds: number;
 }
 
 /** The recorder keeps 300 laps per car, so a wider window has nothing to show. */
 export const LAP_GRAPH_LAP_WINDOW_BOUNDS = { min: 5, max: 300 } as const;
+
+export const LAP_GRAPH_GAP_MAX_BOUNDS = { min: 0, max: 600 } as const;
 
 /** Overlay widgets that can be docked under the Gantry incident feed. */
 export const GANTRY_DOCK_WIDGET_TYPES = ['fuel', 'map', 'flatmap'] as const;
@@ -1213,6 +1284,22 @@ export interface GantryDockConfig {
   arrangement: 'row' | 'tabs';
   /** At most GANTRY_DOCK_MAX_PANELS. */
   panels: GantryDockPanel[];
+}
+
+export const GANTRY_STANDINGS_SOURCES = [
+  'builtin',
+  'overlay',
+  'gantry',
+] as const;
+export type GantryStandingsSource = (typeof GANTRY_STANDINGS_SOURCES)[number];
+
+export interface GantryStandingsConfig {
+  /**
+   * builtin: the Gantry's own table. overlay: the Standings widget's settings.
+   * gantry: a Gantry-only Standings layout, named by `widgetId`.
+   */
+  source: GantryStandingsSource;
+  widgetId?: string;
 }
 
 export interface GantryConfig {
@@ -1246,6 +1333,8 @@ export interface GantryConfig {
   window: GantryWindowConfig;
   /** Panels shown under the incident feed. Sanitise with sanitizeGantryDock. */
   dock: GantryDockConfig;
+  /** Which standings the left pane shows. Sanitise with sanitizeGantryStandings. */
+  standings: GantryStandingsConfig;
 }
 
 export interface GantryWindowConfig {
@@ -1257,6 +1346,131 @@ export interface GantryWindowConfig {
 export const DEFAULT_INCIDENT_CAMERA_GROUP = 'Far Chase';
 
 export type GantryWidgetSettings = BaseWidgetSettings<GantryConfig>;
+
+/** Series look for the broadcast tower. */
+export type BroadcastTheme = 'imsa' | 'wec' | 'f1';
+
+/** How the tower animates from one page to the next. */
+export type BroadcastTransition =
+  | 'random'
+  | 'slide-left'
+  | 'slide-right'
+  | 'slide-up'
+  | 'fade-in'
+  | 'flip'
+  | 'wipe'
+  | 'zoom'
+  | 'checker';
+
+/** What the right-hand column of the tower can show. */
+export type BroadcastPage = 'names' | 'gaps' | 'gained' | 'pits' | 'tyres';
+
+/**
+ * The tower clock: the session clock alone, with the time of day at the
+ * track or on this PC, or laps and time together.
+ */
+export type BroadcastHeaderClock =
+  'session' | 'session-track' | 'session-local' | 'laps-time';
+
+/** TV-style leaderboard and focus-car card, meant for OBS capture. */
+export interface BroadcastConfig {
+  theme: BroadcastTheme;
+  /**
+   * Series logo above the tower title, as an image data URL. Stored inline so
+   * it reaches the OBS page with the rest of the dashboard.
+   */
+  logo: string;
+  background: { opacity: number };
+  /** Fades the whole widget, text included, so it covers less of the stream. */
+  translucent: { enabled: boolean; opacity: number };
+  /** Rows shown per class; the focus car is added below when outside them. */
+  driversPerClass: number;
+  /** Header text; blank shows the track name. */
+  title: string;
+  /** Rotate through the chosen pages, or keep one page up. */
+  pageMode: 'rotate' | 'static';
+  /** Pages in the rotation; one with nothing to show yet is skipped. */
+  pages: Record<BroadcastPage, boolean>;
+  /** The page a static tower shows; its intervals cover every class. */
+  staticPage: BroadcastPage;
+  /** How long each tower page (names, gaps per class, gained, pits, tyres) stays up. */
+  pageSeconds: number;
+  headerClock: BroadcastHeaderClock;
+  /** Page change animation; random never repeats the last one. */
+  pageTransition: BroadcastTransition;
+  /** Lower-third card for the car the camera is on. */
+  showFocusCard: boolean;
+  /** Starting grid before the green flag (the podium is its own widget). */
+  phaseScreens: boolean;
+  driverNameFormat: NameFormat;
+  sessionVisibility: SessionVisibilitySettings;
+}
+
+export type BroadcastWidgetSettings = BaseWidgetSettings<BroadcastConfig>;
+
+/**
+ * Weather card that pops up on change, and every `intervalMinutes`
+ * (0 = only on change), for `showSeconds`.
+ */
+export interface BroadcastWeatherConfig {
+  background: { opacity: number };
+  intervalMinutes: number;
+  showSeconds: number;
+  sessionVisibility: SessionVisibilitySettings;
+}
+
+export type BroadcastWeatherWidgetSettings =
+  BaseWidgetSettings<BroadcastWeatherConfig>;
+
+/** Podium places drawn as metal steps or as trophies. */
+export type BroadcastPodiumStyle = 'steps' | 'trophy';
+
+/** Podium of each class after the checkered flag of a race. */
+export interface BroadcastPodiumConfig {
+  background: { opacity: number };
+  style: BroadcastPodiumStyle;
+}
+
+export type BroadcastPodiumWidgetSettings =
+  BaseWidgetSettings<BroadcastPodiumConfig>;
+
+/** Scrolling bottom-of-screen ticker that cycles standings views. */
+export interface BroadcastTickerConfig {
+  background: { opacity: number };
+  /** Fades the whole widget, text included, so it covers less of the stream. */
+  translucent: { enabled: boolean; opacity: number };
+  /** Scroll speed: how long each car stays in the loop. */
+  secondsPerEntry: number;
+  sessionVisibility: SessionVisibilitySettings;
+}
+
+export type BroadcastTickerWidgetSettings =
+  BaseWidgetSettings<BroadcastTickerConfig>;
+
+/** Race control popups: incidents and flags, with the driver involved. */
+export interface BroadcastEventsConfig {
+  background: { opacity: number };
+  /** How long each event stays up; queued events follow one by one. */
+  showSeconds: number;
+  kinds: {
+    crash: boolean;
+    offTrack: boolean;
+    slowdown: boolean;
+    blackFlag: boolean;
+    yellow: boolean;
+    caution: boolean;
+    fastestLap: boolean;
+    pitStop: boolean;
+    meatball: boolean;
+    disqualified: boolean;
+    finalLap: boolean;
+    checkered: boolean;
+  };
+  sessionVisibility: SessionVisibilitySettings;
+}
+
+export type BroadcastEventsWidgetSettings =
+  BaseWidgetSettings<BroadcastEventsConfig>;
 
 // ===========================
 // Widget config map + typed widget
@@ -1288,7 +1502,7 @@ export interface WidgetConfigMap {
   telemetryinspector: TelemetryInspectorConfig;
   fastercarsfrombehind: FasterCarsFromBehindConfig;
   pitlanehelper: PitlaneHelperConfig;
-  twitchchat: TwitchChatConfig;
+  streamchat: StreamChatConfig;
   laptimelog: LapTimeLogConfig;
   infobar: InformationBarConfig;
   slowcarahead: SlowCarAheadConfig;
@@ -1300,6 +1514,11 @@ export interface WidgetConfigMap {
   battle: BattleConfig;
   laptrace: LapTraceConfig;
   gantry: GantryConfig;
+  broadcast: BroadcastConfig;
+  broadcastticker: BroadcastTickerConfig;
+  broadcastevents: BroadcastEventsConfig;
+  broadcastweather: BroadcastWeatherConfig;
+  broadcastpodium: BroadcastPodiumConfig;
 }
 
 export type TypedDashboardWidget<
@@ -1325,6 +1544,8 @@ export interface BaseWidgetSettings<T = Record<string, unknown>> {
 /** Available settings tabs */
 export type SettingsTabType =
   | 'display'
+  | 'twitch'
+  | 'youtube'
   | 'options'
   | 'visibility'
   | 'styling'
@@ -1342,7 +1563,8 @@ export type SettingsTabType =
   | 'corner'
   | 'braking'
   | 'help'
-  | 'dock';
+  | 'dock'
+  | 'standings';
 
 /** Available widgets for the Fuel Calculator */
 export type FuelWidgetType =
@@ -1400,7 +1622,7 @@ export type FasterCarsFromBehindWidgetSettings =
   BaseWidgetSettings<FasterCarsFromBehindConfig>;
 export type PitlaneHelperWidgetSettings =
   BaseWidgetSettings<PitlaneHelperConfig>;
-export type TwitchChatWidgetSettings = BaseWidgetSettings<TwitchChatConfig>;
+export type StreamChatWidgetSettings = BaseWidgetSettings<StreamChatConfig>;
 export type LapTimeLogWidgetSettings = BaseWidgetSettings<LapTimeLogConfig>;
 export type InformationBarWidgetSettings =
   BaseWidgetSettings<InformationBarConfig>;

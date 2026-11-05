@@ -68,33 +68,27 @@ Running both apps can duplicate overlays and compete for global hotkeys. Use
 one at a time when driving. The OBS web server tries alternate ports when 3000
 is occupied; use the URL shown by the app you intend to capture.
 
+## v2.1.0 custom update
+
+The custom package is `2.1.0-custom.1`, based on upstream tag `v2.1.0`.
+Install the new custom Setup.exe over the existing custom app to retain its
+settings directory. The executable, installer ID and product name are unchanged.
+
+This update retains the custom blind spot bar length, per-car bars and second
+bar colour, pit entry lap display and pit box styling, faster wind arrows,
+wetness colours, replay profile fix and crashed-window input recovery.
+Standings row opacity and lap intervals use the upstream implementations.
+Custom builds default to lap intervals to preserve the earlier custom behaviour;
+explicitly saved Time / Laps selections are retained. Existing settings also
+carry over to copied widgets and receive missing v2.1 defaults.
+
 ## Keep upstream changes and personal changes
 
-Keep `main` as an upstream tracking branch and maintain a separate `custom`
-branch for the custom app. Merge reviewed feature branches into `custom`.
-Configure the upstream remote once:
+`main` holds the integrated custom app and `test` is the validation branch.
+Prepare upstream updates on an integration branch and merge through PRs.
+Keep the custom app identity, publisher and upstream-only official release guard.
+Run lint, tests, Storybook and the Windows build before distributing an update.
 
-```sh
-git remote add upstream https://github.com/tariknz/irdashies.git
-```
-
-For each upstream update, start from a clean working tree:
-
-```sh
-git fetch upstream
-git switch main
-git merge --ff-only upstream/main
-git switch custom
-git merge main
-```
-
-Resolve conflicts while preserving custom identity, the fork publisher, and the
-release guard. Run lint, tests, and a Windows build before installing the update.
-Bump the custom package version and the root version entries in package-lock.json
-for each distributed update, and keep the same app name. Install the new custom
-Setup.exe to update the custom app and retain its user-data directory.
-
-The initial custom distribution changes are prepared on `feat/custom-distribution`.
-After reviewing and committing them, create `custom` from that commit (or merge
-the feature branch into an existing `custom` branch). Keep personal changes off
-the upstream tracking branch.
+The existing **Build Custom Windows App** workflow remains available for its
+original custom build branches and manual runs. Updating `main` or `test` does
+not trigger installer creation. Distribution is a separate operation.

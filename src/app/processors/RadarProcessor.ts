@@ -13,19 +13,23 @@ import {
   type RadarProcessorTuning,
 } from '@irdashies/types';
 import type { TelemetryProcessor } from './TelemetryProcessor';
-import {
-  RadarLaneTracker,
-  type FormationKind,
-  type PoleSide,
-} from './radarLanes';
+import { RadarLaneTracker, poleSign, separateInLaneCars } from './radarLanes';
 import {
   computeFormation,
+  paceFieldPoleLeft,
   PaceMode,
+  parseGridPositions,
   parseStartingGrid,
   type Formation,
   type GridOptions,
 } from './radarFormation';
 import { RadarHazardTracker } from './radarHazards';
+import {
+  NO_POLE_SIDE_SETTINGS,
+  type PoleSideSettings,
+  type PoleSituation,
+} from '@irdashies/types';
+import { wrapDelta } from './radarMath';
 
 /**
  * Metres either side of the focus car that still reach the renderer. The
@@ -53,6 +57,17 @@ const MAX_FRAME_GAP_S = 0.5;
  * reads slower than it is and none may be judged a hazard.
  */
 const SPEED_SETTLE_S = 1;
+const RADAR_TICK_HZ = 25;
+/** A standing grid has no table: its pole is on the left unless flipped. */
+const GRID_POLE_LEFT = true;
+/** Seconds the radar names the pole side after it was flipped. */
+const POLE_NOTICE_S = 3;
+/**
+ * Frame step `speedSmoothing` is the weight for: one tick of `tickRateHz`,
+ * which the radar was tuned on. Scaling the weight by the real step keeps
+ * that response at any call rate.
+ */
+const SMOOTHING_STEP_S = 1 / RADAR_TICK_HZ;
 
 const valuesOf = (frame: Telemetry, key: string): readonly unknown[] =>
   (frame as unknown as Record<string, { value?: unknown[] } | undefined>)[key]
@@ -70,14 +85,6 @@ const numberAt = (
 const scalarNumber = (frame: Telemetry, key: string, fallback = -1): number =>
   numberAt(valuesOf(frame, key), 0, fallback);
 
-/** Shortest signed lap fraction from `from` to `to`, in -0.5..0.5. */
-const wrapDelta = (to: number, from: number): number => {
-  let delta = to - from;
-  if (delta > 0.5) delta -= 1;
-  else if (delta < -0.5) delta += 1;
-  return delta;
-};
-
 /** WeekendInfo.TrackLength is a string such as "5.51 km" or "3.42 mi". */
 export const parseTrackLength = (raw: string | undefined): number => {
   const [value, unit] = raw?.trim().split(/\s+/) ?? [];
@@ -86,17 +93,6 @@ export const parseTrackLength = (raw: string | undefined): number => {
   if (unit === 'km') return parsed * 1000;
   if (unit === 'mi') return parsed * 1609.344;
   return parsed;
-};
-
-/** Pole sides learnt per track, keyed by WeekendInfo.TrackName. */
-export interface RadarPoleSidePersistence {
-  load(track: string): Partial<Record<FormationKind, PoleSide>>;
-  save(track: string, kind: FormationKind, side: PoleSide): void;
-}
-
-const noPoleSidePersistence: RadarPoleSidePersistence = {
-  load: () => ({}),
-  save: () => undefined,
 };
 
 /**
@@ -109,10 +105,12 @@ const noPoleSidePersistence: RadarPoleSidePersistence = {
  */
 export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
   readonly channel = 'radar.snapshot';
-  readonly tickRateHz = 25;
+  readonly tickRateHz = RADAR_TICK_HZ;
 
   private trackLength = 0;
   private readonly excluded = new Set<number>();
+  /** The cars on the focus car's side of the pit wall, reused every tick. */
+  private readonly sameSide: RadarCar[] = [];
   private previousPcts: number[] = [];
   private speeds: number[] = [];
   private previousTime = -1;
@@ -124,19 +122,31 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
   private grid: GridOptions = {
     standingStart: false,
     columns: 2,
-    poleSide: 'left',
   };
   private paceCarIdx = -1;
-  private track = '';
-  private poleKey = '';
+  private session: Session | null = null;
+  /** Grid positions for the session they were read for. */
+  private gridPositions = new Map<number, number>();
+  private gridSessionNum = NaN;
 
   private latest: RadarSnapshot = emptySnapshot(0);
+  private trackId: number | undefined;
+  /** Whether init() has set the pole side up for a track since the last lifecycle end. */
+  private poleTrackKnown = false;
+  /** The side the table gives for a pace field, and the side in use. */
+  private tablePoleLeft = false;
+  private poleLeft = false;
+  /** A race start or a restart: the player corrects each on its own. */
+  private situation: PoleSituation = 'start';
+  /** Session time until which the radar says which side it flipped to. */
+  private poleNoticeUntil = -Infinity;
 
   constructor(
-    private readonly poleSides: RadarPoleSidePersistence = noPoleSidePersistence,
     /** The dev view's tuning, read every frame so changes apply at once. */
     private readonly tuning: () => RadarProcessorTuning = () =>
-      DEFAULT_RADAR_TUNING
+      DEFAULT_RADAR_TUNING,
+    /** The player's own pole side per track, read every frame. */
+    private readonly poleSides: PoleSideSettings = NO_POLE_SIDE_SETTINGS
   ) {
     this.lanes = new RadarLaneTracker(tuning);
   }
@@ -144,30 +154,42 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
   init(session: Session): void {
     this.trackLength = parseTrackLength(session?.WeekendInfo?.TrackLength);
     this.hazards.setTrackLength(this.trackLength);
+    // TrackType is "road course", "short track", "super speedway", "dirt oval"
+    // and so on; anything that is not road racing is an oval
+    const trackType = session?.WeekendInfo?.TrackType ?? '';
+    const previousTrackId = this.trackId;
+    const previousTable = this.tablePoleLeft;
+    this.trackId = session?.WeekendInfo?.TrackID;
+    this.tablePoleLeft = paceFieldPoleLeft(
+      this.trackId,
+      session?.WeekendInfo?.TrackName,
+      trackType !== '' && !/road|rally/i.test(trackType)
+    );
+    // iRacing sends session info again and again; only a new track starts the
+    // pole side over, or a flip would lose its message and its situation. A
+    // corrected track name that changes the table side starts it over too.
+    if (
+      !this.poleTrackKnown ||
+      this.trackId !== previousTrackId ||
+      this.tablePoleLeft !== previousTable
+    ) {
+      this.poleTrackKnown = true;
+      this.situation = 'start';
+      this.poleSides.setTrack(this.trackId, this.tablePoleLeft, this.situation);
+      this.poleLeft =
+        this.poleSides.override(this.trackId, this.situation) ??
+        this.tablePoleLeft;
+      this.lanes.setPoleLeft(this.poleLeft);
+      this.poleNoticeUntil = -Infinity;
+    }
     const options = session?.WeekendInfo?.WeekendOptions;
     this.grid = {
       standingStart: options?.StandingStart === 1,
       ...parseStartingGrid(options?.StartingGrid),
     };
-    // Session revisions arrive throughout a session; only a new track or
-    // grid description may reset what the spotter is part way to learning.
-    const track = session?.WeekendInfo?.TrackName ?? '';
-    const poleKey = `${track}|${this.grid.poleSide}`;
-    if (poleKey !== this.poleKey) {
-      this.poleKey = poleKey;
-      this.track = track;
-      this.lanes.setPoleSide(this.grid.poleSide);
-      // Which side the pole is on is the track's, and the sim does not say;
-      // what the spotter showed here before beats the grid description.
-      if (track) {
-        const learnt = this.poleSides.load(track);
-        for (const kind of ['grid', 'pace'] as const) {
-          const side = learnt[kind];
-          if (side) this.lanes.setPoleSide(side, kind);
-        }
-      }
-    }
     this.paceCarIdx = session?.DriverInfo?.PaceCarIdx ?? -1;
+    this.session = session;
+    this.gridSessionNum = NaN;
     this.excluded.clear();
     for (const driver of session?.DriverInfo?.Drivers ?? []) {
       if (driver.CarIsPaceCar === 1 || driver.IsSpectator === 1) {
@@ -203,6 +225,12 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
             ? NaN
             : wrapDelta(pct, playerPct) * this.trackLength;
       }
+      const sessionNum = scalarNumber(frame, 'SessionNum', -1);
+      if (sessionNum !== this.gridSessionNum) {
+        this.gridSessionNum = sessionNum;
+        this.gridPositions = parseGridPositions(this.session, sessionNum);
+      }
+      const paceMode = scalarNumber(frame, 'PaceMode', PaceMode.NotPacing);
       formation = computeFormation({
         focus,
         dists,
@@ -210,7 +238,7 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
         surfaces: surfaces as readonly number[],
         onPitRoad: onPitRoad as readonly boolean[],
         excluded: this.excluded,
-        paceMode: scalarNumber(frame, 'PaceMode', PaceMode.NotPacing),
+        paceMode,
         paceLines: valuesOf(frame, 'CarIdxPaceLine') as readonly number[],
         paceRows: valuesOf(frame, 'CarIdxPaceRow') as readonly number[],
         sessionState: scalarNumber(frame, 'SessionState'),
@@ -222,7 +250,9 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
         ) as readonly number[],
         paceCarIdx: this.paceCarIdx,
         grid: this.grid,
+        gridPositions: this.gridPositions,
       });
+      this.applyPoleSide(time, formation, paceMode);
       const followCarIdx = formation?.followCarIdx ?? null;
       if (followCarIdx !== null && Number.isFinite(dists[followCarIdx])) {
         follow = {
@@ -242,7 +272,7 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
         cars.push({
           carIdx,
           dist,
-          closingSpeed: (this.speeds[carIdx] ?? playerSpeed) - playerSpeed,
+          relativeSpeed: (this.speeds[carIdx] ?? playerSpeed) - playerSpeed,
           lane: 0,
           laneSource: 'none',
           onPitRoad: onPitRoad[carIdx] === true,
@@ -250,7 +280,24 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
         });
       }
       cars.sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist));
-      this.assignLanes(frame, time, focus, isOnTrack, cars, formation);
+      // Cars across the pit wall are beside the track, not in a lane of it.
+      const focusOnPit = onPitRoad[focus] === true;
+      const sameSide = this.sameSide;
+      sameSide.length = 0;
+      for (const car of cars) {
+        if (car.onPitRoad === focusOnPit) sameSide.push(car);
+      }
+      const spotterSpeaks = this.assignLanes(
+        frame,
+        time,
+        focus,
+        isOnTrack,
+        sameSide,
+        formation
+      );
+      // Without the spotter nobody says a car is not alongside: cars side by
+      // side on a replay or a camera car must not be pulled apart.
+      if (spotterSpeaks) separateInLaneCars(sameSide);
     }
 
     // The pedals are the player's, so they say nothing about a camera car.
@@ -289,11 +336,26 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
       follow,
       focusBrake: drivingFocus && brake >= 0 ? brake : null,
       caution: (flags & CAUTION_FLAGS) !== 0,
+      roadLane: formation
+        ? poleSign(this.poleLeft) *
+          ((formation.columns - 1) / 2 - formation.ownColumn)
+        : 0,
+      poleSideNotice: this.poleNoticeShown(time)
+        ? this.poleLeft
+          ? 'left'
+          : 'right'
+        : null,
       cars,
       hazards,
     };
     if (sameSnapshot(this.latest, next)) return;
     this.latest = { ...next, version: this.latest.version + 1 };
+  }
+
+  /** A dropped radar must not leave the flip key aimed at its last track. */
+  dispose(): void {
+    this.poleTrackKnown = false;
+    this.poleSides.setTrack(undefined, false, 'start');
   }
 
   onLifecycle(event: SessionLifecycleEvent): void {
@@ -305,6 +367,9 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
     this.lanes.reset();
     this.hazards.reset();
     this.laneFocus = -1;
+    // Out of the session the flip key has no track to act on. A new session
+    // number keeps the track: iRacing sends the session info again after it.
+    if (event.type === 'disconnect') this.dispose();
     this.latest = emptySnapshot(this.latest.version + 1);
   }
 
@@ -312,7 +377,8 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
    * The spotter speaks for the player's car only, and only while it is
    * driving; when the camera is on someone else, lanes come from memory and
    * pairing alone. Cars across the pit wall are beside the track, not in a
-   * lane of it, so they stay out of the estimate.
+   * lane of it, so they stay out of the estimate. Returns whether the spotter
+   * was listened to.
    */
   private assignLanes(
     frame: Telemetry,
@@ -321,31 +387,61 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
     isOnTrack: boolean,
     cars: RadarCar[],
     formation: Formation | null
-  ): void {
+  ): boolean {
     if (focus !== this.laneFocus) {
       this.lanes.reset();
       this.laneFocus = focus;
     }
-    const focusOnPitRoad = valuesOf(frame, 'CarIdxOnPitRoad')[focus] === true;
     const spotter =
       isOnTrack && focus === scalarNumber(frame, 'PlayerCarIdx')
         ? scalarNumber(frame, 'CarLeftRight', CarLeftRight.Off)
         : null;
-    const lanes = this.lanes.update(
-      time,
-      cars.filter((car) => car.onPitRoad === focusOnPitRoad),
-      spotter,
-      formation
-    );
+    const lanes = this.lanes.update(time, cars, spotter, formation);
     for (const car of cars) {
       const lane = lanes.get(car.carIdx);
       if (!lane) continue;
       car.lane = lane.lane;
       car.laneSource = lane.source;
     }
-    for (const { kind, side } of this.lanes.takeLearntPoleSides()) {
-      if (this.track) this.poleSides.save(this.track, kind, side);
+    // Off is the spotter saying nothing at all (LMU without positions, say).
+    return spotter !== null && spotter !== CarLeftRight.Off;
+  }
+
+  /**
+   * Follows the player's own pole side for this track, which a keybinding can
+   * change at any time, and says so on the radar for a few seconds.
+   */
+  /** Within POLE_NOTICE_S of the flip, and not left over from a replay's future. */
+  private poleNoticeShown(time: number): boolean {
+    const left = this.poleNoticeUntil - time;
+    return left > 0 && left <= POLE_NOTICE_S;
+  }
+
+  private applyPoleSide(
+    time: number,
+    formation: Formation | null,
+    paceMode: number
+  ): void {
+    const situation: PoleSituation =
+      formation?.kind === 'grid'
+        ? 'grid'
+        : paceMode === PaceMode.SingleFileRestart ||
+            paceMode === PaceMode.DoubleFileRestart
+          ? 'restart'
+          : 'start';
+    const tableLeft =
+      situation === 'grid' ? GRID_POLE_LEFT : this.tablePoleLeft;
+    const changedSituation = situation !== this.situation;
+    if (changedSituation) {
+      this.situation = situation;
+      this.poleSides.setTrack(this.trackId, tableLeft, situation);
     }
+    const side = this.poleSides.override(this.trackId, situation) ?? tableLeft;
+    if (side === this.poleLeft) return;
+    this.poleLeft = side;
+    this.lanes.setPoleLeft(side);
+    // Only a key press is worth a message, not the situation changing.
+    if (!changedSituation) this.poleNoticeUntil = time + POLE_NOTICE_S;
   }
 
   snapshot(): RadarSnapshot {
@@ -354,7 +450,6 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
 
   private updateSpeeds(pcts: readonly unknown[], time: number): void {
     const dt = time - this.previousTime;
-    const smoothing = this.tuning().speedSmoothing;
     // A paused sim or replay repeats SessionTime; keep the last speeds.
     if (this.previousTime >= 0 && dt === 0) return;
     const restart =
@@ -363,7 +458,14 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
       dt > MAX_FRAME_GAP_S ||
       this.trackLength <= 0;
     this.previousTime = time;
+    // A scrubbed-back replay must not replay the old notice.
+    if (dt < 0) this.poleNoticeUntil = -Infinity;
     if (restart) this.speedsSettleUntil = time + SPEED_SETTLE_S;
+    // Weight of the newest sample, scaled so the average responds the same
+    // at any call rate.
+    const smoothing = restart
+      ? 0
+      : 1 - (1 - this.tuning().speedSmoothing) ** (dt / SMOOTHING_STEP_S);
 
     for (let carIdx = 0; carIdx < pcts.length; carIdx += 1) {
       const pct = numberAt(pcts, carIdx);
@@ -379,7 +481,6 @@ export class RadarProcessor implements TelemetryProcessor<RadarSnapshot> {
         continue;
       }
       const current = this.speeds[carIdx] ?? 0;
-      // Weight of the newest sample in the per-car speed average.
       this.speeds[carIdx] = current + smoothing * (sample - current);
     }
   }
@@ -397,6 +498,8 @@ const emptySnapshot = (version: number): RadarSnapshot => ({
   follow: null,
   focusBrake: null,
   caution: false,
+  poleSideNotice: null,
+  roadLane: 0,
   cars: [],
   hazards: [],
   version,
@@ -404,8 +507,9 @@ const emptySnapshot = (version: number): RadarSnapshot => ({
 
 /**
  * Any car in range moves every frame, so only an empty radar can stay
- * unchanged (and a hazard ahead closes in, so it counts as a car). The focus car's progress still counts there: with auto-hide off
- * the map keeps turning under an empty radar.
+ * unchanged (and a hazard ahead closes in, so it counts as a car). The focus
+ * car's progress still counts there: with auto-hide off the map keeps
+ * turning under an empty radar.
  */
 const sameSnapshot = (
   previous: RadarSnapshot,
@@ -420,6 +524,8 @@ const sameSnapshot = (
   previous.playerSpeed === next.playerSpeed &&
   previous.focusBrake === next.focusBrake &&
   previous.caution === next.caution &&
+  previous.poleSideNotice === next.poleSideNotice &&
+  previous.roadLane === next.roadLane &&
   previous.trackLength === next.trackLength &&
   previous.focusOnPitRoad === next.focusOnPitRoad &&
   previous.focusInPitBox === next.focusInPitBox &&

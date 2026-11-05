@@ -25,6 +25,10 @@ export interface ContainerBoundsInfo {
   actual: { x: number; y: number; width: number; height: number };
   /** Offset to compensate for OS constraints (actual - expected) */
   offset: { x: number; y: number };
+  /** The single widget assigned to an individual overlay window. */
+  widgetId?: string;
+  /** Effective layout after recovering a disconnected monitor, without saving it. */
+  widgetLayout?: DashboardLayout['widgets'][number]['layout'];
   /** Which display this window belongs to */
   displayId?: number;
   /** True for the primary display window */
@@ -34,12 +38,6 @@ export interface ContainerBoundsInfo {
   /** Bounds of all known displays — used by the primary window to exclude widgets that belong to another display */
   allDisplayBounds?: { x: number; y: number; width: number; height: number }[];
 }
-
-/** Pole sides the radar learnt from the spotter, by WeekendInfo.TrackName. */
-export type RadarPoleSides = Record<
-  string,
-  Partial<Record<'grid' | 'pace', 'left' | 'right'>>
->;
 
 export interface DashboardBridge {
   onEditModeToggled: (
@@ -66,14 +64,6 @@ export interface DashboardBridge {
    * does) never saw the change event, so it asks on start.
    */
   getIsDemoMode?: () => Promise<boolean>;
-  /** Pole sides the radar has learnt, by track name. */
-  getRadarPoleSides?: () => Promise<RadarPoleSides>;
-  /** Set a learnt pole side by hand, or forget it with null. */
-  setRadarPoleSide?: (
-    track: string,
-    kind: 'grid' | 'pace',
-    side: 'left' | 'right' | null
-  ) => Promise<void>;
   /** Rebuilds the telemetry bridge after generalSettings.simulator changes. */
   notifySimulatorPreferenceChanged?: () => void;
   /** The running simulator, or null while auto-detection is still probing. */
@@ -85,8 +75,6 @@ export interface DashboardBridge {
   ) => (() => void) | undefined;
   /** The per-simulator disabled-widget list, read from simWidgetSupport.json. */
   getSimWidgetSupport?: () => Promise<SimWidgetSupportConfig>;
-  getSettingsShowAllWidgets?: () => Promise<boolean>;
-  setSettingsShowAllWidgets?: (showAll: boolean) => Promise<void>;
   getCurrentDashboard: () => DashboardLayout | null;
   saveGarageCoverImage: (buffer: Uint8Array) => Promise<string>;
   getGarageCoverImageAsDataUrl: (imagePath: string) => Promise<string | null>;

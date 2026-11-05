@@ -1,4 +1,6 @@
-import { SessionState, TrackLocation } from '@irdashies/types';
+import { SessionState, TrackLocation, type Session } from '@irdashies/types';
+// Not from the types barrel: the table is main-process only and large.
+import { poleLeftForTrack } from '../../types/radarPoleSides';
 
 /** iRacing's PaceMode telemetry values. */
 export const PaceMode = {
@@ -17,18 +19,17 @@ export interface GridOptions {
    * than two only matters for the pace line.
    */
   columns: number;
-  /** Side of the pole column as the sim describes it. */
-  poleSide: 'left' | 'right';
 }
 
 /**
  * `WeekendOptions.StartingGrid` reads like "2x2 inline pole on left" or
- * "single file". Anything unrecognised falls back to two wide, pole left,
- * which is what nearly every series runs.
+ * "single file". Anything unrecognised falls back to two wide, which is what
+ * nearly every series runs. The pole side it names is not used: see
+ * POLE_SIGN in radarLanes.
  */
 export const parseStartingGrid = (
   raw: string | undefined
-): Pick<GridOptions, 'columns' | 'poleSide'> => {
+): Pick<GridOptions, 'columns'> => {
   const text = raw?.toLowerCase() ?? '';
   const wide = /(\d+)\s*x\s*\d+/.exec(text);
   const columns = text.includes('single file')
@@ -36,8 +37,39 @@ export const parseStartingGrid = (
     : wide
       ? Math.max(1, parseInt(wide[1], 10))
       : 2;
-  const poleSide = /pole on right/.test(text) ? 'right' : 'left';
-  return { columns, poleSide };
+  return { columns };
+};
+
+/**
+ * Whether the pole line of a pace field is on the left: on ovals the inside,
+ * on road courses the side recorded in `radarPoleSides.json` (the inside of
+ * the first corner unless a driver found otherwise), and on the right for a
+ * track with no entry.
+ */
+export const paceFieldPoleLeft = (
+  trackId: number | undefined,
+  trackName: string | undefined,
+  oval: boolean
+): boolean => oval || (poleLeftForTrack(trackId, trackName) ?? false);
+
+/**
+ * Starting grid positions by car index, 0 for pole: the session's own grid
+ * where the sim fills one in (heats, and some series), else the qualifying
+ * order. Counted from the lowest position, since LMU numbers from 1. Empty
+ * when neither is out yet.
+ */
+export const parseGridPositions = (
+  session: Session | null | undefined,
+  sessionNum: number
+): Map<number, number> => {
+  const ownGrid = session?.SessionInfo?.Sessions?.find(
+    (info) => info.SessionNum === sessionNum
+  )?.QualifyPositions;
+  const order = ownGrid?.length
+    ? ownGrid
+    : (session?.QualifyResultsInfo?.Results ?? []);
+  const pole = Math.min(...order.map((entry) => entry.Position));
+  return new Map(order.map((entry) => [entry.CarIdx, entry.Position - pole]));
 };
 
 export interface FormationInput {
@@ -60,6 +92,8 @@ export interface FormationInput {
   lapsCompleted: readonly number[];
   paceCarIdx: number;
   grid: GridOptions;
+  /** Starting grid position by car index, 0 for pole, when the sim says. */
+  gridPositions?: ReadonlyMap<number, number>;
 }
 
 export interface Formation {
@@ -69,6 +103,9 @@ export interface Formation {
    * the pole side. Multiply by the pole side's sign to get a lane.
    */
   slots: Map<number, number>;
+  /** How many columns the formation has, and which is ours (0: pole side). */
+  columns: number;
+  ownColumn: number;
   /** The car to line up behind while pacing; null when not pacing. */
   followCarIdx: number | null;
 }
@@ -151,7 +188,13 @@ const pacingFormation = (input: FormationInput): Formation | null => {
     }
   }
   if (myRow === 0 && input.paceCarIdx >= 0) followCarIdx = input.paceCarIdx;
-  return { kind: 'pace', slots, followCarIdx };
+  return {
+    kind: 'pace',
+    slots,
+    columns: double ? 2 : 1,
+    ownColumn: double ? Math.min(Math.max(myLine, 0), 1) : 0,
+    followCarIdx,
+  };
 };
 
 /**
@@ -169,6 +212,38 @@ const onGrid = (input: FormationInput): boolean => {
 const isStill = (input: FormationInput, carIdx: number) =>
   Math.abs(input.speeds[carIdx] ?? 0) <=
   (input.gridMaxSpeedMs ?? DEFAULT_GRID_MAX_SPEED_MS);
+
+/**
+ * Columns straight from the sim's grid positions: pole in column 0, P2 in
+ * column 1, and so on. Box spacing read from distances varies along a real
+ * grid (11.5 to 13 m at Bathurst), and one gap off the fit drops every
+ * column, so positions win whenever they agree with the order the cars sit
+ * in. They do not when classes or penalties reorder the grid; the boxes
+ * decide then.
+ */
+const positionSlots = (
+  gridded: readonly number[],
+  focus: number,
+  columns: number,
+  gridPositions: ReadonlyMap<number, number> | undefined
+): { slots: Map<number, number>; ownColumn: number } | null => {
+  if (!gridPositions) return null;
+  const positions = gridded.map((carIdx) => gridPositions.get(carIdx));
+  // Every car placed, front to back in position order; else the boxes decide.
+  const inOrder = positions.every(
+    (position, rank) =>
+      position !== undefined &&
+      (rank === 0 || (positions[rank - 1] ?? Infinity) < position)
+  );
+  if (!inOrder) return null;
+  const columnOf = (rank: number) => (positions[rank] ?? 0) % columns;
+  const myColumn = columnOf(gridded.indexOf(focus));
+  const slots = new Map<number, number>();
+  gridded.forEach((carIdx, rank) => {
+    if (carIdx !== focus) slots.set(carIdx, columnOf(rank) - myColumn);
+  });
+  return { slots, ownColumn: myColumn };
+};
 
 const gridFormation = (input: FormationInput): Formation | null => {
   const { focus, grid } = input;
@@ -199,22 +274,52 @@ const gridFormation = (input: FormationInput): Formation | null => {
 
   // Front of the grid first.
   gridded.sort((a, b) => input.dists[b] - input.dists[a] || a - b);
+  const columns = Math.max(2, grid.columns);
+  const byPosition = positionSlots(
+    gridded,
+    focus,
+    columns,
+    input.gridPositions
+  );
+  if (byPosition) {
+    return {
+      kind: 'grid',
+      slots: byPosition.slots,
+      columns,
+      ownColumn: byPosition.ownColumn,
+      followCarIdx: null,
+    };
+  }
+
   const gaps = gridded
     .slice(1)
     .map((carIdx, index) => input.dists[gridded[index]] - input.dists[carIdx]);
   const steps = boxSteps(gaps);
   // Columns we cannot trust are worse than none: the field still counts as
   // on the grid, but lanes come from the spotter alone.
-  if (!steps) return { kind: 'grid', slots: new Map(), followCarIdx: null };
+  if (!steps) {
+    return {
+      kind: 'grid',
+      slots: new Map(),
+      columns: 1,
+      ownColumn: 0,
+      followCarIdx: null,
+    };
+  }
   const boxes: number[] = [0];
   steps.forEach((step, index) => boxes.push(boxes[index] + step));
 
-  const columns = Math.max(2, grid.columns);
   const columnOf = (rank: number) => boxes[rank] % columns;
   const myColumn = columnOf(gridded.indexOf(focus));
   const slots = new Map<number, number>();
   gridded.forEach((carIdx, rank) => {
     if (carIdx !== focus) slots.set(carIdx, columnOf(rank) - myColumn);
   });
-  return { kind: 'grid', slots, followCarIdx: null };
+  return {
+    kind: 'grid',
+    slots,
+    columns,
+    ownColumn: myColumn,
+    followCarIdx: null,
+  };
 };

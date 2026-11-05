@@ -2,7 +2,7 @@ import { Meta, StoryObj } from '@storybook/react-vite';
 import { DriverInfoRow } from './DriverInfoRow';
 import { useCurrentSessionType } from '@irdashies/context';
 import type { StandingsWidgetSettings } from '@irdashies/types';
-import { CAR_ID_TO_CAR_MANUFACTURER } from '../CarManufacturer/carManufacturerMapping';
+import { CAR_ID_TO_CAR_MANUFACTURER } from '../../../shared/CarManufacturer/carManufacturerMapping';
 import { TelemetryDecorator } from '@irdashies/storybook';
 import type { ResolvedDriverTag } from '../../hooks/useDriverTagMap';
 
@@ -91,7 +91,18 @@ export const LappedInterval: Story = {
     config: {
       ...Primary.args?.config,
       gap: { enabled: true, decimalPlaces: 1 },
-      interval: { enabled: true, decimalPlaces: 1 },
+      interval: { enabled: true, decimalPlaces: 1, displayMode: 'laps' },
+    } as StandingsWidgetSettings['config'],
+  },
+};
+
+export const TimeInterval: Story = {
+  args: {
+    ...LappedInterval.args,
+    interval: 125,
+    config: {
+      ...LappedInterval.args?.config,
+      interval: { enabled: true, decimalPlaces: 1, displayMode: 'time' },
     } as StandingsWidgetSettings['config'],
   },
 };
@@ -1698,41 +1709,5 @@ export const WithLapCountUnknown: Story = {
       ...Primary.args?.config,
       lapCount: { enabled: true },
     } as StandingsWidgetSettings['config'],
-  },
-};
-
-export const PitEntryLap: Story = {
-  args: {
-    ...Primary.args,
-    lap: 13,
-    lastLap: 13,
-    lastPitLap: 11,
-    pitEntryLap: 10,
-    carTrackSurface: 3,
-    config: {
-      ...Primary.args?.config,
-      pitStatus: {
-        enabled: true,
-        pitLapDisplayMode: 'pitEntryLap',
-      },
-    } as StandingsWidgetSettings['config'],
-  },
-};
-
-export const PitLane: Story = {
-  args: {
-    ...Primary.args,
-    onPitRoad: true,
-    carTrackSurface: 2,
-    prevCarTrackSurface: 3,
-    lastLap: 10,
-  },
-};
-
-export const PitBox: Story = {
-  args: {
-    ...PitLane.args,
-    carTrackSurface: 1,
-    prevCarTrackSurface: 2,
   },
 };
