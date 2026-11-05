@@ -1105,6 +1105,7 @@ export const defaultDashboard: {
         indicatorLength: 50,
         displayMode: 'standard',
         multiCarBars: false,
+        secondIndicatorColor: null,
         simpleSize: 44,
         simpleVerticalPosition: 50,
         simpleShowCount: true,

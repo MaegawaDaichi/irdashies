@@ -182,6 +182,32 @@ export const BlindSpotMonitorSettings = () => {
                         </select>
                       </div>
                     </div>
+                    {settings.config.multiCarBars === true && (
+                      <SettingSelectRow
+                        title="Second Bar Color"
+                        description="Colour of the outer bar when two cars are alongside on the same side."
+                        value={
+                          settings.config.secondIndicatorColor?.toString() ??
+                          'inherit'
+                        }
+                        options={[
+                          { label: 'Same as first bar', value: 'inherit' },
+                          ...Array.from(
+                            HIGHLIGHT_COLOR_PRESETS.entries(),
+                            ([value, label]) => ({
+                              label,
+                              value: value.toString(),
+                            })
+                          ),
+                        ]}
+                        onChange={(v) =>
+                          handleConfigChange({
+                            secondIndicatorColor:
+                              v === 'inherit' ? null : Number(v),
+                          })
+                        }
+                      />
+                    )}
                   </>
                 )}
 
