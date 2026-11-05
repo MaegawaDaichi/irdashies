@@ -89,7 +89,6 @@ Prepare upstream updates on an integration branch and merge through PRs.
 Keep the custom app identity, publisher and upstream-only official release guard.
 Run lint, tests, Storybook and the Windows build before distributing an update.
 
-**Build Custom Windows App** runs on pushes to `main`, `test` and the v2.1
-integration branch, as well as the existing custom build branches. It can also
-be run manually. The custom build is unsigned and does not publish a release
-or enable automatic updates. Download `irDashies-Custom-Setup` for the installer.
+The existing **Build Custom Windows App** workflow remains available for its
+original custom build branches and manual runs. Updating `main` or `test` does
+not trigger installer creation. Distribution is a separate operation.

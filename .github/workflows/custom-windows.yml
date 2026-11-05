@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - test
-      - chore/integrate-v2.1-custom
       - custom
       - feat/custom-distribution
       - fix/overlay-click-through-recovery
@@ -25,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: '26'
+          node-version: '24'
           cache: npm
       - name: Install dependencies
         run: npm ci
