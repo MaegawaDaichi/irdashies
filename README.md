@@ -12,6 +12,8 @@ An open-source platform for building real-time racing overlays and utilities usi
 This fork builds **irDashies Custom**, a separate app for personal modifications.
 See [custom builds and settings migration](docs/CUSTOM_BUILD.md) for Windows
 installers, copying existing layouts, and incorporating upstream updates.
+For one-click launching with automatic local rebuilds, see the
+[Custom launcher guide](docs/CUSTOM_LAUNCHER.md).
 
 For bug reports, feature requests, or to get involved, join our [Discord](https://discord.gg/YMAqduF2Ft).
 
@@ -634,9 +636,7 @@ Settings are split into **Display**, **Twitch** and **YouTube** tabs. Chat from 
 
 <img src="./docs/assets/twitchchat.png" alt="Twitch Chat with sample messages" width="374">
 
-
 ### Heart Rate
-
 
 Displays your live heart rate from [HypeRate](https://www.hyperate.io/) by embedding its overlay — no API key or account required, just your session id.
 
