@@ -202,3 +202,20 @@ describe('dashboard import scaling', () => {
     expect(mocks.refresh).toHaveBeenCalledWith(dashboards.race);
   });
 });
+
+describe('session profile mapping validation', () => {
+  it('persists garage mappings and drops unsupported keys and invalid ids', async () => {
+    await mocks.handlers.get('setSessionProfileMap')?.(undefined, {
+      garage: 'setup-layout',
+      race: 'race',
+      spotting: 'watching',
+      unknown: 'ignored',
+      practice: 123,
+    });
+    expect(mocks.writeData).toHaveBeenCalledWith('sessionProfileMap', {
+      garage: 'setup-layout',
+      race: 'race',
+      spotting: 'watching',
+    });
+  });
+});

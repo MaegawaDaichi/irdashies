@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import type { SessionProfileMap } from '@irdashies/types';
 import { ProfileSettings } from './ProfileSettings';
 
 vi.mock('@irdashies/utils/logger', () => ({
@@ -8,6 +9,8 @@ vi.mock('@irdashies/utils/logger', () => ({
 
 const mocks = vi.hoisted(() => ({
   getComponentServerPort: vi.fn(),
+  getSessionProfileMap: vi.fn(),
+  setSessionProfileMap: vi.fn(),
   refreshProfiles: vi.fn(),
   switchProfile: vi.fn(),
   writeText: vi.fn(),
@@ -29,6 +32,8 @@ vi.mock('@irdashies/context', () => ({
     currentProfile: profiles[0],
     profiles,
     bridge: {
+      getSessionProfileMap: mocks.getSessionProfileMap,
+      setSessionProfileMap: mocks.setSessionProfileMap,
       getComponentServerPort: mocks.portDiscoveryAvailable
         ? mocks.getComponentServerPort
         : undefined,
@@ -43,6 +48,8 @@ const expectedUrl = (profile: string, port: number, host = '192.168.1.50') =>
 
 beforeEach(() => {
   mocks.getComponentServerPort.mockReset().mockResolvedValue(4321);
+  mocks.getSessionProfileMap.mockReset().mockResolvedValue({});
+  mocks.setSessionProfileMap.mockReset().mockResolvedValue(undefined);
   mocks.switchProfile.mockReset();
   mocks.writeText.mockReset().mockResolvedValue(undefined);
   mocks.webServerEnabled = true;
@@ -208,5 +215,33 @@ describe('ProfileSettings browser layout URLs', () => {
     expect(
       screen.getByText(/The built-in web server is turned off/)
     ).toBeInTheDocument();
+  });
+});
+
+describe('ProfileSettings garage mapping', () => {
+  it('loads, saves and clears the garage mapping without losing other triggers', async () => {
+    const map: SessionProfileMap = {
+      race: 'default',
+      spotting: 'default',
+      garage: 'race + night',
+    };
+    mocks.getSessionProfileMap.mockResolvedValue(map);
+    render(<ProfileSettings />);
+    const garage = screen.getByRole('combobox', { name: 'Garage (car setup)' });
+    await waitFor(() => expect(garage).toHaveValue('race + night'));
+    fireEvent.change(garage, { target: { value: 'default' } });
+    await waitFor(() =>
+      expect(mocks.setSessionProfileMap).toHaveBeenLastCalledWith({
+        ...map,
+        garage: 'default',
+      })
+    );
+    fireEvent.change(garage, { target: { value: '' } });
+    await waitFor(() =>
+      expect(mocks.setSessionProfileMap).toHaveBeenLastCalledWith({
+        race: 'default',
+        spotting: 'default',
+      })
+    );
   });
 });
