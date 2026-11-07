@@ -90,14 +90,14 @@ async function runCommand(args, root) {
   });
 }
 
-async function isRunning(executable) {
-  const { stdout } = await exec(
+export async function isRunning(executable, execute = exec) {
+  const { stdout } = await execute(
     'powershell.exe',
     [
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      '$p = Get-Process -Name irdashies-custom -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $env:IRDASHIES_LAUNCH_TARGET }; if ($p) { "running" }',
+      '$ErrorActionPreference = "Stop"; $p = Get-Process | Where-Object { $_.ProcessName -eq "irdashies-custom" -and $_.Path -eq $env:IRDASHIES_LAUNCH_TARGET }; if ($p) { "running" }; exit 0',
     ],
     { env: { ...process.env, IRDASHIES_LAUNCH_TARGET: executable } }
   );
