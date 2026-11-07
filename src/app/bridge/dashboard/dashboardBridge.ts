@@ -50,6 +50,7 @@ import {
 import {
   SESSION_PROFILE_KEYS,
   SPOTTING_TRIGGER_KEY,
+  GARAGE_TRIGGER_KEY,
   type ProfileTriggerKey,
   type SessionProfileMap,
 } from '@irdashies/types';
@@ -59,6 +60,7 @@ import logger from '../../logger';
 const PROFILE_TRIGGER_KEYS: ProfileTriggerKey[] = [
   ...SESSION_PROFILE_KEYS,
   SPOTTING_TRIGGER_KEY,
+  GARAGE_TRIGGER_KEY,
 ];
 
 /**

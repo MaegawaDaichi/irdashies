@@ -1,5 +1,9 @@
 import type { SessionProfileMap, ProfileTriggerKey } from '@irdashies/types';
-import { sessionProfileKeyFor, SPOTTING_TRIGGER_KEY } from '@irdashies/types';
+import {
+  sessionProfileKeyFor,
+  SPOTTING_TRIGGER_KEY,
+  GARAGE_TRIGGER_KEY,
+} from '@irdashies/types';
 import type { SessionLifecycle } from '../sessionLifecycle';
 import logger from '../logger';
 
@@ -35,8 +39,8 @@ export interface SessionProfileSwitcher {
  *
  * - A trigger with no profile mapped means "leave the profile alone". That is
  *   the default for every trigger, so an untouched install never switches.
- * - Spotting outranks the session type while it lasts. It is a state rather
- *   than a session type, so it can occur inside any of them.
+ * - Garage outranks spotting, which outranks the session type. Both are
+ *   states that can occur inside any session type.
  *
  * A manual profile change is never fought: past the initial seed the switcher
  * only acts on a transition, so whatever the user picks stands until the
@@ -53,6 +57,7 @@ export const createSessionProfileSwitcher = (
 
   let sessionKey: ProfileTriggerKey | undefined;
   let spotting = false;
+  let garageVisible = false;
   let dwellTimer: ReturnType<typeof setTimeout> | undefined;
 
   const clearDwell = () => {
@@ -64,7 +69,11 @@ export const createSessionProfileSwitcher = (
   const apply = (reason: string) => {
     const map = deps.getMap();
     const trigger =
-      spotting && map[SPOTTING_TRIGGER_KEY] ? SPOTTING_TRIGGER_KEY : sessionKey;
+      garageVisible && map[GARAGE_TRIGGER_KEY]
+        ? GARAGE_TRIGGER_KEY
+        : spotting && map[SPOTTING_TRIGGER_KEY]
+          ? SPOTTING_TRIGGER_KEY
+          : sessionKey;
     if (!trigger) return;
 
     const profileId = map[trigger];
@@ -145,10 +154,21 @@ export const createSessionProfileSwitcher = (
     }
   );
 
+  const unsubscribeGarage = deps.lifecycle.onGarageVisibilityChange(
+    (visible) => {
+      if (visible === garageVisible) return;
+      garageVisible = visible;
+      if (deps.getMap()[GARAGE_TRIGGER_KEY]) {
+        apply(visible ? 'garage opened' : 'garage closed');
+      }
+    }
+  );
+
   const unsubscribeDisconnect = deps.lifecycle.onDisconnect(() => {
     clearDwell();
     sessionKey = undefined;
     spotting = false;
+    garageVisible = false;
   });
 
   // Seeded after subscribing, because the lifecycle reports transitions and
@@ -160,6 +180,10 @@ export const createSessionProfileSwitcher = (
   // report the same type, there may never be one.
   const initial = deps.lifecycle.getCurrentState();
   let seeded = false;
+  if (initial.isGarageVisible !== undefined) {
+    garageVisible = initial.isGarageVisible;
+    seeded = true;
+  }
   if (initial.sessionType !== undefined) {
     seeded = takeSessionType(initial.sessionType) || seeded;
   }
@@ -173,6 +197,7 @@ export const createSessionProfileSwitcher = (
       clearDwell();
       unsubscribeType();
       unsubscribeDriving();
+      unsubscribeGarage();
       unsubscribeDisconnect();
     },
   };

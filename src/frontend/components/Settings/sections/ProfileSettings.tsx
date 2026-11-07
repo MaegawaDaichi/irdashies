@@ -12,6 +12,8 @@ import {
   SESSION_PROFILE_LABELS,
   SPOTTING_TRIGGER_KEY,
   SPOTTING_TRIGGER_LABEL,
+  GARAGE_TRIGGER_KEY,
+  GARAGE_TRIGGER_LABEL,
 } from '@irdashies/types';
 import logger from '@irdashies/utils/logger';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -666,6 +668,23 @@ export const ProfileSettings = () => {
             >
               Use {currentProfile?.name ?? 'current profile'} for all sessions
             </button>
+          </div>
+
+          <div className="border-t border-slate-700 pt-3 space-y-2">
+            <SessionProfileRow
+              triggerKey={GARAGE_TRIGGER_KEY}
+              label={GARAGE_TRIGGER_LABEL}
+              profiles={profiles}
+              value={sessionProfileMap[GARAGE_TRIGGER_KEY] ?? ''}
+              disabled={!sessionProfileMapLoaded}
+              onChange={handleSessionProfileChange}
+            />
+            <p className="text-sm text-slate-400">
+              Applied while the garage (car setup) screen is open, taking
+              priority over spotting and session profiles. Closing the garage
+              returns to the mapped spotting or session profile. If neither is
+              mapped, the current profile stays active.
+            </p>
           </div>
 
           <div className="border-t border-slate-700 pt-3 space-y-2">
