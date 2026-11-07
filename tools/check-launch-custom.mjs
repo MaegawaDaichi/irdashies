@@ -4,7 +4,34 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { launchCustom } from './launch-custom.mjs';
+import { launchCustom, isRunning } from './launch-custom.mjs';
+
+test('process checks distinguish empty results from a matching executable', async () => {
+  assert.equal(await isRunning('unused', async () => ({ stdout: '' })), false);
+  assert.equal(
+    await isRunning('unused', async () => ({ stdout: 'running\r\n' })),
+    true
+  );
+  await assert.rejects(
+    isRunning('unused', async () => {
+      throw new Error('PowerShell unavailable');
+    }),
+    /PowerShell unavailable/
+  );
+});
+
+test(
+  'Windows process check succeeds when no matching app is running',
+  { skip: process.platform !== 'win32' },
+  async () => {
+    assert.equal(
+      await isRunning(
+        path.join(tmpdir(), 'missing-custom-app', 'irdashies-custom.exe')
+      ),
+      false
+    );
+  }
+);
 
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'custom-launch-'));
