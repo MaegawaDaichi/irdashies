@@ -308,6 +308,7 @@ export interface WeatherConfig {
 }
 
 export interface WindConfig {
+  colorArrowByDirection: boolean;
   background: { opacity: number };
   units: 'auto' | 'Metric' | 'Imperial';
   showOnlyWhenOnTrack: boolean;

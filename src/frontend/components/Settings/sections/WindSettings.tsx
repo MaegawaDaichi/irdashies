@@ -103,6 +103,7 @@ export const WindSettings = () => {
               <WidgetScaleSettings widgetId={SETTING_ID} />
               <SettingProp path="background.opacity" />
               <SettingProp path="units" />
+              <SettingProp path="colorArrowByDirection" />
             </SettingsSection>
 
             <SettingsSection title="Visibility">

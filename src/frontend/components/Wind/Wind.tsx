@@ -27,7 +27,9 @@ export const Wind = memo(() => {
 
   const weather = useThrottledWeather();
   const relativeWindDirection =
-    (weather.windDirection ?? 0) - (weather.windYaw ?? 0);
+    weather.windDirection !== undefined && weather.windYaw !== undefined
+      ? weather.windDirection - weather.windYaw
+      : undefined;
   const demoWind = useWindDemoData(isDemoMode, isMetric);
 
   const containerClassName =
@@ -42,6 +44,7 @@ export const Wind = memo(() => {
         <WindDirection
           speedMs={demoWind.speedMs}
           direction={demoWind.direction}
+          colorArrowByDirection={settings.colorArrowByDirection}
           metric={isMetric}
         />
       </div>
@@ -59,6 +62,7 @@ export const Wind = memo(() => {
       <WindDirection
         speedMs={weather.windVelocity}
         direction={relativeWindDirection}
+        colorArrowByDirection={settings.colorArrowByDirection}
         metric={isMetric}
       />
     </div>

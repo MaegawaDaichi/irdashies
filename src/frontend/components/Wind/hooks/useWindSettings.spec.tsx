@@ -22,6 +22,13 @@ describe('useWindSettings', () => {
       background: { opacity: 35 },
       units: 'Metric',
     });
+    expect(result.current.colorArrowByDirection).toBe(false);
+  });
+
+  it('preserves the saved direction color toggle', () => {
+    savedConfig = { ...defaults, colorArrowByDirection: true };
+    const { result } = renderHook(() => useWindSettings());
+    expect(result.current.colorArrowByDirection).toBe(true);
   });
 
   it('falls back to the defaults when a saved value is invalid', () => {

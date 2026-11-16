@@ -1,15 +1,24 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { getWindIntensityClass } from '../../../domain/weather/wind';
+import {
+  getRelativeWindColor,
+  getWindIntensityClass,
+} from '../../../domain/weather/wind';
 import { speedFromMs } from '@irdashies/utils/units';
 
 export interface WindDirectionProps {
   speedMs?: number;
   direction?: number;
   metric?: boolean;
+  colorArrowByDirection?: boolean;
 }
 
 export const WindDirection = memo(
-  ({ speedMs, direction, metric = true }: WindDirectionProps) => {
+  ({
+    speedMs,
+    direction,
+    metric = true,
+    colorArrowByDirection = false,
+  }: WindDirectionProps) => {
     const speed =
       speedMs !== undefined
         ? speedFromMs(speedMs, metric ? 'km/h' : 'mph')
@@ -19,6 +28,9 @@ export const WindDirection = memo(
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [size, setSize] = useState<number | null>(null);
     const windIntensityClass = getWindIntensityClass(speed);
+    const arrowColor = colorArrowByDirection
+      ? getRelativeWindColor(direction)
+      : undefined;
 
     useEffect(() => {
       if (direction === undefined) return;
@@ -72,7 +84,14 @@ export const WindDirection = memo(
               rotate: `calc(${normalizedAngle} * 1rad + 0.5turn)`,
             }}
           >
-            <path d="M48 8A28 28 90 0158 30c0 15.464-12.536 28-28 28S2 45.464 2 30A28 28 90 0112 8M22 9 30 1l8 8" />
+            <path d="M48 8A28 28 90 0158 30c0 15.464-12.536 28-28 28S2 45.464 2 30A28 28 90 0112 8" />
+            <path
+              d="M22 9 30 1l8 8"
+              className="stroke-(--wind-arrow-color) transition-colors duration-200"
+              style={{
+                ['--wind-arrow-color' as string]: arrowColor ?? 'currentColor',
+              }}
+            />
           </svg>
 
           <div
