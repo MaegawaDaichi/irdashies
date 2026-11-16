@@ -1,11 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import {
   getDemoWindData,
+  getRelativeWindColor,
   getWindIntensityClass,
   WIND_DEMO_INTERVAL_MS,
 } from './wind';
 
 describe('wind domain', () => {
+  describe('getRelativeWindColor', () => {
+    it.each([
+      [0, 0],
+      [Math.PI / 4, 60],
+      [Math.PI / 2, 120],
+      [(3 * Math.PI) / 4, 180],
+      [Math.PI, 240],
+    ])('maps direction %s to hue %s', (direction, hue) => {
+      expect(getRelativeWindColor(direction)).toBe(`hsl(${hue} 100% 50%)`);
+      expect(getRelativeWindColor(-direction)).toBe(`hsl(${hue} 100% 50%)`);
+    });
+
+    it('keeps colors continuous across full turns and the tailwind boundary', () => {
+      const hue = (direction: number) =>
+        Number(getRelativeWindColor(direction)?.match(/hsl\(([^ ]+)/)?.[1]);
+      const angle = 0.37;
+      expect(hue(angle + 2 * Math.PI)).toBeCloseTo(hue(angle));
+      expect(hue(angle - 4 * Math.PI)).toBeCloseTo(hue(angle));
+      expect(hue(-0.001)).toBeCloseTo(hue(2 * Math.PI - 0.001));
+      expect(hue(Math.PI - 0.001)).toBeCloseTo(hue(Math.PI + 0.001));
+    });
+
+    it.each([undefined, NaN, Infinity, -Infinity])(
+      'does not assign a directional color for unavailable direction %s',
+      (direction) => {
+        expect(getRelativeWindColor(direction)).toBeUndefined();
+      }
+    );
+  });
+
   describe('getWindIntensityClass', () => {
     it('returns white when speed is undefined or below 5', () => {
       expect(getWindIntensityClass(undefined)).toBe('text-white');

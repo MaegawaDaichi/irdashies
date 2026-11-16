@@ -16,6 +16,7 @@ export default defineWidgetManifest({
       opacity: 80,
     },
     units: 'auto',
+    colorArrowByDirection: false,
     showOnlyWhenOnTrack: false,
     sessionVisibility: {
       race: true,
@@ -42,6 +43,12 @@ export default defineWidgetManifest({
         { value: 'Metric', label: 'km/h' },
         { value: 'Imperial', label: 'mph' },
       ],
+    },
+    colorArrowByDirection: {
+      type: 'boolean',
+      label: 'Color arrow by wind direction',
+      description:
+        'Smoothly color the arrow from red (headwind) through green (crosswind) to blue (tailwind), relative to your car.',
     },
     showOnlyWhenOnTrack: {
       type: 'boolean',

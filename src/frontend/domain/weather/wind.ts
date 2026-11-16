@@ -15,6 +15,18 @@ const WIND_DEMO_VALUES = [
 
 export const WIND_DEMO_INTERVAL_MS = 1500;
 
+// Relative direction 0 is a headwind; +/- PI is a tailwind.
+// Fold both sides onto [0, PI] to keep the hue symmetric and wrap continuously.
+export const getRelativeWindColor = (
+  direction?: number
+): string | undefined => {
+  if (direction === undefined || !Number.isFinite(direction)) return undefined;
+
+  const angle = Math.abs(Math.atan2(Math.sin(direction), Math.cos(direction)));
+  const hue = (angle / Math.PI) * 240;
+  return `hsl(${hue} 100% 50%)`;
+};
+
 export const getDemoWindData = (
   index: number,
   metric: boolean
