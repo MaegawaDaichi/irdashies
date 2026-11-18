@@ -4,6 +4,42 @@ import { CarLeftRight } from '@irdashies/types';
 import { BlindSpotMonitorDisplay } from './BlindSpotMonitor';
 
 describe('BlindSpotMonitor multi-car display', () => {
+  it.each([10, 50, 100])(
+    'keeps the travel range at %i%% bar length',
+    (length) => {
+      const props = {
+        show: true,
+        multiCarBars: true,
+        indicatorLength: length,
+        leftState: CarLeftRight.CarLeft,
+        rightState: CarLeftRight.Clear,
+        leftPercent: 0,
+        rightPercent: 0,
+      };
+      const renderAt = (percent: number) => (
+        <BlindSpotMonitorDisplay
+          {...props}
+          bars={[{ carIdx: 1, side: 'left', percent }]}
+        />
+      );
+      const { container, rerender } = render(renderAt(0));
+      const bar = container.querySelector<HTMLElement>(
+        'div[style*="translateY"]'
+      );
+      if (!bar) throw new Error('Expected a visible blind spot bar');
+      expect(bar.style.height).toBe(`${length}%`);
+      const topInContainer = () => {
+        const translation = bar.style.transform.match(/translateY\(([^%]+)%\)/);
+        return (Number(translation?.[1]) * length) / 100;
+      };
+      expect(topInContainer()).toBeCloseTo((100 - length) / 2);
+      rerender(renderAt(1));
+      expect(topInContainer()).toBeCloseTo(-length);
+      rerender(renderAt(-1));
+      expect(topInContainer()).toBeCloseTo(100);
+    }
+  );
+
   it('draws each rival separately with the existing bar dimensions and no count text', () => {
     const { container, queryByText } = render(
       <BlindSpotMonitorDisplay
@@ -23,11 +59,9 @@ describe('BlindSpotMonitor multi-car display', () => {
     );
     const bars = container.querySelectorAll('.-translate-x-1\\/2');
     expect(bars).toHaveLength(3);
-    expect(Array.from(bars, (bar) => (bar as HTMLElement).style.top)).toEqual([
-      '-5%',
-      '55%',
-      '25%',
-    ]);
+    expect(
+      Array.from(bars, (bar) => (bar as HTMLElement).style.transform)
+    ).toEqual(['translateY(-10%)', 'translateY(110%)', 'translateY(50%)']);
     expect(Array.from(bars, (bar) => (bar as HTMLElement).style.width)).toEqual(
       ['20px', '20px', '20px']
     );
@@ -51,14 +85,17 @@ describe('BlindSpotMonitor bar mode option', () => {
   const barPositions = (container: HTMLElement) =>
     Array.from(
       container.querySelectorAll('div[style*="height: 50%"]'),
-      (bar) => (bar as HTMLElement).style.top
+      (bar) => (bar as HTMLElement).style.transform
     );
 
   it('defaults to one bar per side with the legacy position and two-car label', () => {
     const { container, getByText } = render(
       <BlindSpotMonitorDisplay {...props} />
     );
-    expect(barPositions(container)).toEqual(['10%', '40%']);
+    expect(barPositions(container)).toEqual([
+      'translateY(20%)',
+      'translateY(80%)',
+    ]);
     expect(getByText('2 left')).toBeTruthy();
   });
 
@@ -66,10 +103,17 @@ describe('BlindSpotMonitor bar mode option', () => {
     const { container, rerender, queryByText } = render(
       <BlindSpotMonitorDisplay {...props} multiCarBars />
     );
-    expect(barPositions(container)).toEqual(['-5%', '55%', '25%']);
+    expect(barPositions(container)).toEqual([
+      'translateY(-10%)',
+      'translateY(110%)',
+      'translateY(50%)',
+    ]);
     expect(queryByText('2 left')).toBeNull();
     rerender(<BlindSpotMonitorDisplay {...props} multiCarBars={false} />);
-    expect(barPositions(container)).toEqual(['10%', '40%']);
+    expect(barPositions(container)).toEqual([
+      'translateY(20%)',
+      'translateY(80%)',
+    ]);
     expect(queryByText('2 left')).toBeTruthy();
     rerender(<BlindSpotMonitorDisplay {...props} multiCarBars />);
     expect(barPositions(container)).toHaveLength(3);

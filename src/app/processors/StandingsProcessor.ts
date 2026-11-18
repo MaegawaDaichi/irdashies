@@ -91,6 +91,10 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
         : null;
   }
 
+  /**
+   * Copies one frame's per-car standings data into the snapshot, starting over
+   * first when the session changes or restarts, or its clock runs backwards.
+   */
   onFrame(frame: Telemetry): void {
     if (!this.enabled) return;
     const sessionTime = numberValue(frame, 'SessionTime');
@@ -187,6 +191,12 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
       frame,
       'LmuCarIdxPenaltySeconds',
       this.latest.carIdxPenaltySeconds
+    );
+    // LMU only: the sim's per-car finished / DNF / DQ.
+    copyNumberArray(
+      frame,
+      'LmuCarIdxFinishStatus',
+      this.latest.carIdxFinishStatus
     );
     this.latest.penaltySeconds =
       numberValue(frame, 'LmuPenaltySeconds') ?? undefined;
@@ -301,6 +311,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
     this.latest.carIdxPenalties.length = 0;
     this.latest.carIdxPenaltyKind.length = 0;
     this.latest.carIdxPenaltySeconds.length = 0;
+    this.latest.carIdxFinishStatus.length = 0;
     this.latest.penaltySeconds = undefined;
     this.latest.trackLimitsPointsMax = 0;
     this.latest.carIdxP2PStatus.length = 0;
@@ -337,6 +348,7 @@ export class StandingsProcessor implements TelemetryProcessor<StandingsSnapshot>
       carIdxPenalties: [],
       carIdxPenaltyKind: [],
       carIdxPenaltySeconds: [],
+      carIdxFinishStatus: [],
       penaltySeconds: undefined,
       trackLimitsPointsMax: 0,
       carIdxP2PStatus: [],

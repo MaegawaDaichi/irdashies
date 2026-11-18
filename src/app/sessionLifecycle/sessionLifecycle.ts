@@ -5,6 +5,7 @@ type Callback = () => void;
 type CarIdxCallback = (carIdx: number) => void;
 type SessionTypeCallback = (sessionType: string) => void;
 type DrivingStateCallback = (isDriving: boolean) => void;
+type WatchingStateCallback = (isWatching: boolean) => void;
 export interface SessionEnterEvent {
   replay: boolean;
 }
@@ -17,7 +18,33 @@ export interface SessionLifecycleState {
   /** Undefined until the first telemetry frame settles it. */
   isDriving: boolean | undefined;
   /** Undefined until the first telemetry frame settles it. */
+  isWatching: boolean | undefined;
+  /** Undefined until the first telemetry frame settles it. */
   isGarageVisible: boolean | undefined;
+}
+
+const telemetryFlag = (telemetry: Telemetry, key: keyof Telemetry): boolean =>
+  (telemetry[key] as { value?: unknown[] } | undefined)?.value?.[0] === true;
+
+/**
+ * Whether the sim is showing the track: the player in the car, a replay,
+ * spectating, or LMU's monitor watching the session. Not a menu, iRacing's
+ * garage screen, or LMU outside a session.
+ *
+ * LMU frames carry `LmuNotInSession`, from LMU's own game state. The monitor
+ * counts while its frame is live; a frame the sim stopped writing, out of the
+ * car, is a session that has ended. iRacing has no such state, so its garage
+ * screen is the one place in a session that does not show the track.
+ */
+export function isWatchingTrack(telemetry: Telemetry): boolean {
+  if (telemetry.LmuNotInSession !== undefined) {
+    return (
+      !telemetryFlag(telemetry, 'LmuNotInSession') &&
+      (telemetryFlag(telemetry, 'IsOnTrack') ||
+        !telemetryFlag(telemetry, 'LmuDataStale'))
+    );
+  }
+  return !telemetryFlag(telemetry, 'IsGarageVisible');
 }
 
 export interface SessionLifecycle {
@@ -43,6 +70,11 @@ export interface SessionLifecycle {
    * anything that is not hands on the wheel.
    */
   onDrivingStateChange: (cb: DrivingStateCallback) => () => void;
+  /**
+   * Called when the sim starts or stops showing the track; see
+   * isWatchingTrack. A disconnect while watching reports false.
+   */
+  onWatchingStateChange: (cb: WatchingStateCallback) => () => void;
   /** Called when the car setup screen opens or closes. */
   onGarageVisibilityChange: (cb: (visible: boolean) => void) => () => void;
   /** Called when iRacing disconnects (SDK stops publishing). */
@@ -74,6 +106,7 @@ export function createSessionLifecycle(): SessionLifecycle {
   const sessionNumChangeCallbacks = new Set<Callback>();
   const sessionTypeChangeCallbacks = new Set<SessionTypeCallback>();
   const drivingStateChangeCallbacks = new Set<DrivingStateCallback>();
+  const watchingStateChangeCallbacks = new Set<WatchingStateCallback>();
   const garageVisibilityCallbacks = new Set<(visible: boolean) => void>();
   const disconnectCallbacks = new Set<Callback>();
 
@@ -83,6 +116,7 @@ export function createSessionLifecycle(): SessionLifecycle {
   const sessionTypesByNum = new Map<number, string>();
   let lastSessionType: string | undefined;
   let lastIsDriving: boolean | undefined;
+  let lastIsWatching: boolean | undefined;
   let lastIsGarageVisible: boolean | undefined;
   let lastSubSessionId: string | undefined;
 
@@ -124,19 +158,27 @@ export function createSessionLifecycle(): SessionLifecycle {
 
   function resolveDrivingState(telemetry: Telemetry): void {
     const flag = (key: keyof Telemetry): boolean =>
-      (telemetry[key] as { value?: unknown[] } | undefined)?.value?.[0] ===
-      true;
+      telemetryFlag(telemetry, key);
 
-    // IsOnTrack includes the player being in the car, even in the pit box.
-    // Pit location flags describe the car, not whether the player is driving
-    // it. They can remain true while watching or pausing a replay and must not
-    // send the profile back to the session layout.
-    const isDriving =
-      flag('IsOnTrack') && !flag('IsInGarage') && !flag('IsReplayPlaying');
+    // iRacing's IsOnTrack already covers the player in the pit box. Its pit
+    // flags can stay set while spectating or pausing a replay. Only LMU
+    // publishes LmuOutOfCar, so only use the pit fallback on LMU frames.
+    const inLmuPits =
+      telemetry.LmuOutOfCar?.value?.[0] === false &&
+      (flag('PlayerCarInPitStall') || flag('OnPitRoad'));
+    const inCar = flag('IsOnTrack') || inLmuPits;
+    const isDriving = inCar && !flag('IsInGarage') && !flag('IsReplayPlaying');
 
     if (isDriving === lastIsDriving) return;
     lastIsDriving = isDriving;
     fire(drivingStateChangeCallbacks, isDriving);
+  }
+
+  function resolveWatchingState(telemetry: Telemetry): void {
+    const isWatching = isWatchingTrack(telemetry);
+    if (isWatching === lastIsWatching) return;
+    lastIsWatching = isWatching;
+    fire(watchingStateChangeCallbacks, isWatching);
   }
 
   return {
@@ -164,6 +206,10 @@ export function createSessionLifecycle(): SessionLifecycle {
       drivingStateChangeCallbacks.add(cb);
       return () => drivingStateChangeCallbacks.delete(cb);
     },
+    onWatchingStateChange(cb) {
+      watchingStateChangeCallbacks.add(cb);
+      return () => watchingStateChangeCallbacks.delete(cb);
+    },
     onGarageVisibilityChange(cb) {
       garageVisibilityCallbacks.add(cb);
       return () => garageVisibilityCallbacks.delete(cb);
@@ -177,6 +223,7 @@ export function createSessionLifecycle(): SessionLifecycle {
       return {
         sessionType: lastSessionType,
         isDriving: lastIsDriving,
+        isWatching: lastIsWatching,
         isGarageVisible: lastIsGarageVisible,
       };
     },
@@ -198,12 +245,13 @@ export function createSessionLifecycle(): SessionLifecycle {
         resolveSessionType();
       }
       resolveDrivingState(telemetry);
-      // Match GarageCover: garage flags describe the setup UI, while
-      // IsOnTrack takes precedence when the player gets back in the car.
+      resolveWatchingState(telemetry);
+      // Match GarageCover: returning to the car takes precedence over the
+      // garage flags, which may still be set on that frame.
       const garageVisible =
-        telemetry.IsOnTrack?.value?.[0] !== true &&
-        (telemetry.IsGarageVisible?.value?.[0] === true ||
-          telemetry.IsInGarage?.value?.[0] === true);
+        !telemetryFlag(telemetry, 'IsOnTrack') &&
+        (telemetryFlag(telemetry, 'IsGarageVisible') ||
+          telemetryFlag(telemetry, 'IsInGarage'));
       if (garageVisible !== lastIsGarageVisible) {
         lastIsGarageVisible = garageVisible;
         fire(garageVisibilityCallbacks, garageVisible);
@@ -306,7 +354,10 @@ export function createSessionLifecycle(): SessionLifecycle {
       sessionTypesByNum.clear();
       lastSessionType = undefined;
       lastIsDriving = undefined;
+      const wasWatching = lastIsWatching;
+      lastIsWatching = undefined;
       lastIsGarageVisible = undefined;
+      if (wasWatching) fire(watchingStateChangeCallbacks, false);
       lastSubSessionId = undefined;
       fireAll(disconnectCallbacks);
     },

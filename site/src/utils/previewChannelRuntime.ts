@@ -125,11 +125,13 @@ export function createPreviewChannelRuntime(
     onSessionTypeChange: () => () => undefined,
     onDrivingStateChange: () => () => undefined,
     onGarageVisibilityChange: () => () => undefined,
+    onWatchingStateChange: () => () => undefined,
     onDisconnect: () => () => undefined,
     getCurrentState: () => ({
       sessionType: undefined,
       isDriving: undefined,
       isGarageVisible: undefined,
+      isWatching: undefined,
     }),
     _onEnter: () => undefined,
     _onTelemetry: () => undefined,

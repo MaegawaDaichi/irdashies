@@ -38,7 +38,9 @@ export const BlindSpotMonitorIndicator = ({
       ? indicatorLength
       : 50;
   const movementRange = (100 + length) / 2;
-  const topPosition = `${(100 - length) / 2 - percent * movementRange}%`;
+  const topInContainer = (100 - length) / 2 - percent * movementRange;
+  // translateY percentages are relative to the bar's own height.
+  const translateY = `${(topInContainer * 100) / length}%`;
   const widthPx = `${width ?? 20}px`;
   const indicatorColorHex = `#${(indicatorColor ?? 16096779).toString(16).padStart(6, '0')}`;
   const transitionTimeoutRef = useRef<number | null>(null);
@@ -88,13 +90,13 @@ export const BlindSpotMonitorIndicator = ({
         }}
       >
         <div
-          className={`absolute rounded-full left-1/2 -translate-x-1/2 flex items-center justify-center`}
+          className={`absolute top-0 rounded-full left-1/2 -translate-x-1/2 flex items-center justify-center`}
           style={{
-            top: topPosition,
+            transform: `translateY(${translateY})`,
             height: `${length}%`,
             width: widthPx,
             backgroundColor: indicatorColorHex,
-            transition: enableTransition ? 'top 0.04s linear' : 'none',
+            transition: enableTransition ? 'transform 0.04s linear' : 'none',
           }}
         ></div>
 
