@@ -34,10 +34,12 @@ const makeLifecycle = (
   initialState: {
     sessionType?: string;
     isDriving?: boolean;
+    isGarageVisible?: boolean;
   } = {}
 ) => {
   const typeCallbacks = new Set<(sessionType: string) => void>();
   const drivingCallbacks = new Set<(isDriving: boolean) => void>();
+  const garageCallbacks = new Set<(visible: boolean) => void>();
   const disconnectCallbacks = new Set<() => void>();
 
   const lifecycle = {
@@ -49,6 +51,10 @@ const makeLifecycle = (
       drivingCallbacks.add(cb);
       return () => drivingCallbacks.delete(cb);
     },
+    onGarageVisibilityChange: (cb: (visible: boolean) => void) => {
+      garageCallbacks.add(cb);
+      return () => garageCallbacks.delete(cb);
+    },
     onDisconnect: (cb: () => void) => {
       disconnectCallbacks.add(cb);
       return () => disconnectCallbacks.delete(cb);
@@ -56,6 +62,7 @@ const makeLifecycle = (
     getCurrentState: () => ({
       sessionType: initialState.sessionType,
       isDriving: initialState.isDriving,
+      isGarageVisible: initialState.isGarageVisible,
     }),
   } as unknown as SessionLifecycle;
 
@@ -65,9 +72,14 @@ const makeLifecycle = (
       typeCallbacks.forEach((cb) => cb(sessionType)),
     emitDriving: (isDriving: boolean) =>
       drivingCallbacks.forEach((cb) => cb(isDriving)),
+    emitGarage: (visible: boolean) =>
+      garageCallbacks.forEach((cb) => cb(visible)),
     emitDisconnect: () => disconnectCallbacks.forEach((cb) => cb()),
     subscriberCount: () =>
-      typeCallbacks.size + drivingCallbacks.size + disconnectCallbacks.size,
+      typeCallbacks.size +
+      drivingCallbacks.size +
+      garageCallbacks.size +
+      disconnectCallbacks.size,
   };
 };
 
@@ -75,12 +87,16 @@ const setup = (
   map: SessionProfileMap,
   {
     currentProfileId = 'default',
-    existingProfiles = ['default', 'quali', 'race', 'spotter'],
+    existingProfiles = ['default', 'quali', 'race', 'spotter', 'garage'],
     initialState = {},
   }: {
     currentProfileId?: string;
     existingProfiles?: string[];
-    initialState?: { sessionType?: string; isDriving?: boolean };
+    initialState?: {
+      sessionType?: string;
+      isDriving?: boolean;
+      isGarageVisible?: boolean;
+    };
   } = {}
 ) => {
   const harness = makeLifecycle(initialState);
@@ -351,6 +367,124 @@ describe('sessionProfileSwitcher', () => {
     });
   });
 
+  describe('garage', () => {
+    it('overrides spotting immediately and hands back when closed', () => {
+      const { emitGarage, emitDriving, emitSessionType, switchProfile } = setup(
+        {
+          race: 'race',
+          spotting: 'spotter',
+          garage: 'garage',
+        }
+      );
+      emitSessionType('Race');
+      emitDriving(false);
+      emitGarage(true);
+      expect(switchProfile.mock.calls).toEqual([['race'], ['garage']]);
+      vi.advanceTimersByTime(SPOTTING_DWELL_MS);
+      emitSessionType('Practice');
+      expect(switchProfile).toHaveBeenCalledTimes(2);
+      emitGarage(false);
+      expect(switchProfile).toHaveBeenLastCalledWith('spotter');
+    });
+
+    it('returns to the session when closed before spotting dwell completes', () => {
+      const { emitGarage, emitDriving, switchProfile } = setup(
+        { race: 'race', spotting: 'spotter', garage: 'garage' },
+        { initialState: { sessionType: 'Race', isDriving: true } }
+      );
+      emitDriving(false);
+      emitGarage(true);
+      emitGarage(false);
+      expect(switchProfile.mock.calls).toEqual([
+        ['race'],
+        ['garage'],
+        ['race'],
+      ]);
+    });
+
+    it('starts on the garage profile when the setup screen is already open', () => {
+      const { switchProfile } = setup(
+        { race: 'race', spotting: 'spotter', garage: 'garage' },
+        {
+          initialState: {
+            sessionType: 'Race',
+            isDriving: false,
+            isGarageVisible: true,
+          },
+        }
+      );
+      expect(switchProfile.mock.calls).toEqual([['garage']]);
+    });
+
+    it('leaves manual choices alone when garage is unmapped', () => {
+      const { emitGarage, switchProfile } = setup({ race: 'race' });
+      emitGarage(true);
+      emitGarage(false);
+      expect(switchProfile).not.toHaveBeenCalled();
+    });
+
+    it('keeps the garage layout when there is no mapped profile to return to', () => {
+      const { emitGarage, switchProfile } = setup({ garage: 'garage' });
+      emitGarage(true);
+      emitGarage(false);
+      expect(switchProfile.mock.calls).toEqual([['garage']]);
+    });
+
+    it('resets garage state on disconnect and unsubscribes on disposal', () => {
+      const {
+        emitGarage,
+        emitDisconnect,
+        emitSessionType,
+        switcher,
+        switchProfile,
+      } = setup({ garage: 'garage', race: 'race' });
+      emitGarage(true);
+      emitDisconnect();
+      emitSessionType('Race');
+      expect(switchProfile.mock.calls).toEqual([['garage'], ['race']]);
+      switcher.dispose();
+      emitGarage(true);
+      expect(switchProfile).toHaveBeenCalledTimes(2);
+    });
+
+    it('handles telemetry opening and closing setup while already out of the car', () => {
+      const lifecycle = createSessionLifecycle();
+      let current = 'spotter';
+      const switchProfile = vi.fn((id: string) => {
+        current = id;
+      });
+      lifecycle._onSession({
+        SessionInfo: { Sessions: [{ SessionNum: 0, SessionType: 'Race' }] },
+      } as unknown as Session);
+      const frame = (garage: boolean, driving = false) =>
+        lifecycle._onTelemetry({
+          SessionNum: { value: [0] },
+          IsOnTrack: { value: [driving] },
+          IsGarageVisible: { value: [garage] },
+        } as unknown as Telemetry);
+      frame(false);
+      const switcher = createSessionProfileSwitcher({
+        lifecycle,
+        getMap: () => ({ race: 'race', spotting: 'spotter', garage: 'garage' }),
+        getCurrentProfileId: () => current,
+        profileExists: () => true,
+        switchProfile,
+      });
+      frame(true);
+      frame(true);
+      frame(false);
+      frame(true);
+      frame(false, true);
+      expect(switchProfile.mock.calls).toEqual([
+        ['garage'],
+        ['spotter'],
+        ['garage'],
+        ['race'],
+      ]);
+      switcher.dispose();
+    });
+  });
+
   describe('lifecycle', () => {
     it('forgets the session after a disconnect', () => {
       const { emitSessionType, emitDisconnect, emitDriving, switchProfile } =
@@ -383,7 +517,7 @@ describe('sessionProfileSwitcher', () => {
 
     it('unsubscribes from the lifecycle when disposed', () => {
       const { switcher, subscriberCount } = setup({ race: 'race' });
-      expect(subscriberCount()).toBe(3);
+      expect(subscriberCount()).toBe(4);
 
       switcher.dispose();
 

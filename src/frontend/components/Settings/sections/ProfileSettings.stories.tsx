@@ -9,6 +9,7 @@ const profiles = [
   { id: 'quali-clean', name: 'Qualifying' },
   { id: 'race-full', name: 'Race' },
   { id: 'spotter-view', name: 'Spotting' },
+  { id: 'garage-view', name: 'Garage' },
 ].map((profile) => ({
   ...profile,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -75,6 +76,7 @@ export const SessionMappingConfigured: Story = {
     openQualify: 'quali-clean',
     race: 'race-full',
     spotting: 'spotter-view',
+    garage: 'garage-view',
   }),
 };
 

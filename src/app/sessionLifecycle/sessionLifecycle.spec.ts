@@ -573,13 +573,34 @@ describe('sessionLifecycle', () => {
       expect(lifecycle.getCurrentState()).toEqual({
         sessionType: 'Race',
         isDriving: true,
+        isGarageVisible: false,
       });
+    });
+
+    it('reports garage transitions, deduplicates frames and resets on disconnect', () => {
+      const lifecycle = createSessionLifecycle();
+      const changed = vi.fn();
+      const unsubscribe = lifecycle.onGarageVisibilityChange(changed);
+      const frame = (flags: Record<string, boolean>) =>
+        lifecycle._onTelemetry(makeDrivingTelemetry(0, flags));
+      frame({ IsOnTrack: false, IsGarageVisible: true });
+      frame({ IsOnTrack: false, IsGarageVisible: true });
+      expect(lifecycle.getCurrentState().isGarageVisible).toBe(true);
+      frame({ IsOnTrack: false, IsInGarage: true });
+      frame({ IsOnTrack: true, IsGarageVisible: true });
+      expect(changed.mock.calls).toEqual([[true], [false]]);
+      lifecycle._onDisconnect();
+      expect(lifecycle.getCurrentState().isGarageVisible).toBeUndefined();
+      unsubscribe();
+      frame({ IsGarageVisible: true });
+      expect(changed).toHaveBeenCalledTimes(2);
     });
 
     it('knows nothing before the SDK has published', () => {
       expect(createSessionLifecycle().getCurrentState()).toEqual({
         sessionType: undefined,
         isDriving: undefined,
+        isGarageVisible: undefined,
       });
     });
   });

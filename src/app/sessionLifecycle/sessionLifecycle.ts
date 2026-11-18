@@ -16,6 +16,8 @@ export interface SessionLifecycleState {
   sessionType: string | undefined;
   /** Undefined until the first telemetry frame settles it. */
   isDriving: boolean | undefined;
+  /** Undefined until the first telemetry frame settles it. */
+  isGarageVisible: boolean | undefined;
 }
 
 export interface SessionLifecycle {
@@ -41,6 +43,8 @@ export interface SessionLifecycle {
    * anything that is not hands on the wheel.
    */
   onDrivingStateChange: (cb: DrivingStateCallback) => () => void;
+  /** Called when the car setup screen opens or closes. */
+  onGarageVisibilityChange: (cb: (visible: boolean) => void) => () => void;
   /** Called when iRacing disconnects (SDK stops publishing). */
   onDisconnect: (cb: Callback) => () => void;
 
@@ -70,6 +74,7 @@ export function createSessionLifecycle(): SessionLifecycle {
   const sessionNumChangeCallbacks = new Set<Callback>();
   const sessionTypeChangeCallbacks = new Set<SessionTypeCallback>();
   const drivingStateChangeCallbacks = new Set<DrivingStateCallback>();
+  const garageVisibilityCallbacks = new Set<(visible: boolean) => void>();
   const disconnectCallbacks = new Set<Callback>();
 
   // Track current state to detect deltas.
@@ -78,6 +83,7 @@ export function createSessionLifecycle(): SessionLifecycle {
   const sessionTypesByNum = new Map<number, string>();
   let lastSessionType: string | undefined;
   let lastIsDriving: boolean | undefined;
+  let lastIsGarageVisible: boolean | undefined;
   let lastSubSessionId: string | undefined;
 
   function fire<T>(callbacks: Set<(arg: T) => void>, arg: T): void {
@@ -158,13 +164,21 @@ export function createSessionLifecycle(): SessionLifecycle {
       drivingStateChangeCallbacks.add(cb);
       return () => drivingStateChangeCallbacks.delete(cb);
     },
+    onGarageVisibilityChange(cb) {
+      garageVisibilityCallbacks.add(cb);
+      return () => garageVisibilityCallbacks.delete(cb);
+    },
     onDisconnect(cb) {
       disconnectCallbacks.add(cb);
       return () => disconnectCallbacks.delete(cb);
     },
 
     getCurrentState() {
-      return { sessionType: lastSessionType, isDriving: lastIsDriving };
+      return {
+        sessionType: lastSessionType,
+        isDriving: lastIsDriving,
+        isGarageVisible: lastIsGarageVisible,
+      };
     },
 
     _onEnter(event) {
@@ -184,6 +198,16 @@ export function createSessionLifecycle(): SessionLifecycle {
         resolveSessionType();
       }
       resolveDrivingState(telemetry);
+      // Match GarageCover: garage flags describe the setup UI, while
+      // IsOnTrack takes precedence when the player gets back in the car.
+      const garageVisible =
+        telemetry.IsOnTrack?.value?.[0] !== true &&
+        (telemetry.IsGarageVisible?.value?.[0] === true ||
+          telemetry.IsInGarage?.value?.[0] === true);
+      if (garageVisible !== lastIsGarageVisible) {
+        lastIsGarageVisible = garageVisible;
+        fire(garageVisibilityCallbacks, garageVisible);
+      }
     },
 
     _onSession(session) {
@@ -282,6 +306,7 @@ export function createSessionLifecycle(): SessionLifecycle {
       sessionTypesByNum.clear();
       lastSessionType = undefined;
       lastIsDriving = undefined;
+      lastIsGarageVisible = undefined;
       lastSubSessionId = undefined;
       fireAll(disconnectCallbacks);
     },

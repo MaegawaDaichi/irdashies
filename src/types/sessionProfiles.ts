@@ -41,9 +41,14 @@ export const SESSION_PROFILE_LABELS: Record<SessionProfileKey, string> = {
  * `spotting` is not a session type — it is a state that can occur inside any
  * of them, when the player is in the session but not in the car. It takes
  * precedence over the session type while it lasts, and hands back as soon as
- * the player is driving again.
+ * the player is driving again. `garage` takes precedence over both while
+ * the car setup screen is open.
  */
-export type ProfileTriggerKey = SessionProfileKey | 'spotting';
+export type ProfileTriggerKey = SessionProfileKey | 'spotting' | 'garage';
+
+export const GARAGE_TRIGGER_KEY = 'garage' as const;
+
+export const GARAGE_TRIGGER_LABEL = 'Garage (car setup)';
 
 export const SPOTTING_TRIGGER_KEY = 'spotting' as const;
 
