@@ -144,6 +144,7 @@ describe('publishIRacingSDKEvents session polling', () => {
       sessionType: 'Practice',
       isDriving: true,
       isWatching: true,
+      isGarageVisible: false,
     });
 
     bridge.stop();
@@ -153,6 +154,7 @@ describe('publishIRacingSDKEvents session polling', () => {
       sessionType: undefined,
       isDriving: undefined,
       isWatching: undefined,
+      isGarageVisible: undefined,
     });
     bridge.stop();
     await vi.advanceTimersByTimeAsync(2_000);
