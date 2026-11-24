@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ReferenceLap } from '@irdashies/types';
 import { useReferenceLapStore } from '@irdashies/context';
+import capturedTelemetry from '../../../../test-data/1752616787256/telemetry.json';
 import {
   augmentStandingsWithGap,
   augmentStandingsWithInterval,
@@ -80,14 +81,16 @@ function calculate(
     true,
     'Race'
   );
-  return augmentStandingsWithInterval(gaps, data.laps, data.pcts, showLaps, {
-    useLivePositionStandings: true,
-    carIdxOnPitRoad: data.pits,
-    carIdxEstTime: estimates,
-  })[0][1];
+  return augmentStandingsWithInterval(
+    gaps,
+    data.laps,
+    data.pcts,
+    showLaps,
+    data.pits
+  )[0][1];
 }
 
-describe.each(['reference', 'estimated', 'distance'] as const)(
+describe.each(['reference', 'distance'] as const)(
   'live race intervals using %s timing',
   (timing) => {
     const setup = () => {
@@ -99,15 +102,13 @@ describe.each(['reference', 'estimated', 'distance'] as const)(
       });
       return field();
     };
-    const run = (data: Field, showLaps = false) =>
-      calculate(data, showLaps, timing === 'distance' ? [] : undefined);
+    const run = (data: Field, showLaps = false) => calculate(data, showLaps);
 
     it.each([false, true])(
       'keeps the nearly lapped P11 97 seconds behind P10 (lap display %s)',
       (showLaps) => {
         const data = setup();
         expect(run(data, showLaps)[10].interval).toBeCloseTo(97, 3);
-        // Moving the leader must not change the interval between P10 and P11.
         data.pcts[0] = 0.52;
         data.laps[0] = 11;
         expect(run(data, showLaps)[10].interval).toBeCloseTo(97, 3);
@@ -181,28 +182,53 @@ describe.each(['reference', 'estimated', 'distance'] as const)(
   }
 );
 
-it('uses estimated times on pit road even when a reference lap is available', () => {
+it.each([false, true])(
+  'keeps closely spaced cars close with inverted estimated times (lap display %s)',
+  (showLaps) => {
+    useReferenceLapStore.setState({
+      getReferenceLap: () => ({ ...referenceLap, finishTime: -1 }),
+    });
+    const data = field();
+    data.laps[9] = capturedTelemetry.CarIdxLap.value[24];
+    data.laps[10] = capturedTelemetry.CarIdxLap.value[20];
+    data.pcts[9] = capturedTelemetry.CarIdxLapDistPct.value[24];
+    data.pcts[10] = capturedTelemetry.CarIdxLapDistPct.value[20];
+    data.standings[9].carClass.estLapTime = 90.4585;
+    data.standings[10].carClass.estLapTime = 89.0997;
+    const estimates = data.pcts.map((pct) => pct * 100);
+    estimates[9] = capturedTelemetry.CarIdxEstTime.value[24];
+    estimates[10] = capturedTelemetry.CarIdxEstTime.value[20];
+    expect(calculate(data, showLaps, estimates)[10].interval).toBeCloseTo(
+      0.00098,
+      6
+    );
+  }
+);
+
+it('uses track progress on pit road even when a reference lap is available', () => {
   useReferenceLapStore.setState({ getReferenceLap: () => referenceLap });
   const data = field();
   data.pits[10] = true;
+  data.standings[10].carClass.estLapTime = 80;
   const estimates = data.pcts.map((pct) => pct * 100);
   estimates[10] = 60;
-  expect(calculate(data, false, estimates)[10].interval).toBeCloseTo(90, 3);
+  expect(calculate(data, false, estimates)[10].interval).toBeCloseTo(77.6, 3);
 });
 
-it('uses the reference lap duration for whole laps as well as the fractional gap', () => {
+it('uses the measured segment duration and full lap duration from the reference', () => {
   useReferenceLapStore.setState({
     getReferenceLap: () => ({
       ...referenceLap,
       startTime: 500,
       finishTime: 620,
-      times: Float32Array.from({ length: 100 }, (_, i) => i * 1.2),
-      tangents: new Float32Array(100).fill(120),
+      times: Float32Array.from({ length: 100 }, (_, i) => 120 * (i / 100) ** 2),
+      tangents: Float32Array.from({ length: 100 }, (_, i) => 240 * (i / 100)),
     }),
   });
   const data = field();
-  data.pcts[9] = 0.54;
-  expect(calculate(data)[10].interval).toBeCloseTo(121.2, 3);
+  data.pcts[9] = 0.5;
+  data.pcts[10] = 0.25;
+  expect(calculate(data)[10].interval).toBeCloseTo(142.5, 3);
 });
 
 it('can show a whole-lap difference without usable timing data', () => {
